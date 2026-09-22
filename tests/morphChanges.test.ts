@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { morphChanges, vMorphChanges } from "../src/index";
 import "../src/element";
-import { RISE, ROLL_MS, SPREAD } from "../src/tokens";
+import { EDGE, ENTER_FROM, EXIT_CLEAR, FIT_GROW, ROLL_MS, SPREAD } from "../src/tokens";
 
 // happy-dom has no layout and no Web Animations. Every glyph measures as a 10px box in
 // reading order, and each animate() call is recorded so a test can read what moved.
@@ -54,12 +54,17 @@ describe("morphChanges", () => {
     morphChanges(el);
     el.textContent = "Copied";
     await mutation();
-    const out = rolls().filter((c) => c.frames[1].opacity === 0);
+    const out = rolls().filter((c) => c.frames.at(-1)!.opacity === 0);
     const into = rolls().filter((c) => c.frames[0].opacity === 0);
     expect(out.map((c) => c.el.textContent)).toEqual(["y"]);
-    expect(out[0].frames[1].translate).toBe(`0 -${RISE}em`);
+    // Every glyph box here is 10px tall: a roll travels exactly one box, straight, at full size.
+    expect(out[0].frames.at(-1)!.translate).toBe("0 -10px");
+    expect(out[0].frames.at(-1)!.scale).toBe(1);
+    // It is gone before its travel is: faded out by EXIT_CLEAR, so nothing glides onto it while it still shows.
+    expect(out[0].frames[1]).toEqual({ opacity: 0, offset: EXIT_CLEAR });
     expect(into.map((c) => c.el.textContent)).toEqual(["i", "e", "d"]);
-    expect(into[0].frames[0].translate).toBe(`0 ${RISE}em`);
+    expect(into[0].frames[0].translate).toBe("0 10px");
+    expect(into[0].frames[1]).toEqual({ opacity: 0, offset: ENTER_FROM }); // shows only once it is on its way
     const delays = into.map((c) => c.options.delay as number);
     expect(delays).toEqual([...delays].sort((x, y) => x - y)); // left to right
     expect(Math.max(...delays)).toBeLessThanOrEqual(ROLL_MS * SPREAD);
@@ -75,8 +80,9 @@ describe("morphChanges", () => {
     expect([...slot.children].map((f) => f.textContent)).toEqual(["9", "0"]); // both values share the slot mid-roll
     const out = calls.find((c) => c.el.textContent === "9")!;
     const into = calls.find((c) => c.el.textContent === "0")!;
-    expect(out.frames[1].translate).toBe(`0 -${RISE}em`);
-    expect(into.frames[0].translate).toBe(`0 ${RISE}em`);
+    // One box apart the whole way, so the leaving and arriving digit never overlap in their shared slot.
+    expect(out.frames.at(-1)!.translate).toBe("0 -10px");
+    expect(into.frames[0].translate).toBe("0 10px");
     expect(out.options.delay).toBe(into.options.delay); // the old value leaves as the new one arrives
     expect(copies(el).sort()).toEqual(["1", "90"]); // the new tens digit, and the ones slot holding both values
   });
@@ -87,7 +93,7 @@ describe("morphChanges", () => {
     el.textContent = "9";
     await mutation();
     const into = rolls().find((c) => c.frames[0].opacity === 0)!;
-    expect(into.frames[0].translate).toBe(`0 -${RISE}em`);
+    expect(into.frames[0].translate).toBe("0 -10px");
   });
 
   it("morphs an icon element into the next one", async () => {
@@ -103,7 +109,7 @@ describe("morphChanges", () => {
     expect(leaving.frames[1]).toMatchObject({ opacity: 0, scale: 0.25 });
   });
 
-  it("draws through a window: the element across, soft bands above and below, never cutting a glyph at rest", () => {
+  it("draws through a window: the element or the glyph boxes, never beyond, with a thin fade at the top and bottom", () => {
     // A tight line-height: each glyph's own box reaches 4px above the element and 4px below.
     Range.prototype.getBoundingClientRect = () => ({ ...box(cursor++), top: -4, bottom: 24, height: 28 }) as DOMRect;
     Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => 20 });
@@ -111,12 +117,13 @@ describe("morphChanges", () => {
     morphChanges(el);
     const window = el.querySelector<HTMLElement>("[aria-hidden]")!;
     expect(window.style.overflow).toMatch(/clip|hidden/);
-    // Plus one roll's travel (RISE em of 10px) above and below, faded across, so a rolling glyph dissolves rather than being sliced.
-    expect(window.style.top).toBe(`-${4 + RISE * 10}px`);
-    expect(window.style.bottom).toBe(`-${4 + RISE * 10}px`);
-    expect(window.style.getPropertyValue("mask-image")).toContain(`#000 ${RISE * 10}px`);
-    // Text touching the edges leaves no room for a fade, so nothing at rest is dimmed.
-    expect(window.style.getPropertyValue("mask-image")).toContain("#000 0px");
+    // Exactly the glyph boxes: a rolling glyph leaves and arrives through these edges, never painting past the line.
+    expect(window.style.top).toBe("-4px");
+    expect(window.style.bottom).toBe("-4px");
+    const mask = window.style.getPropertyValue("mask-image");
+    expect(mask).toContain(`to bottom, transparent, #000 ${EDGE * 10}px`); // EDGE of the 10px type, inside the box's margin
+    // Text touching the sides leaves no room for a sideways fade, so nothing at rest is dimmed.
+    expect(mask).toContain("#000 0px");
     delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
   });
 
@@ -152,6 +159,28 @@ describe("morphChanges", () => {
     expect(boxes[1].style.width).toBe("20px");
     delete (HTMLElement.prototype as { offsetWidth?: number }).offsetWidth;
     delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight;
+  });
+
+  it("eases its width so no showing letter is cut: ahead of arrivals growing, after departures shrinking", async () => {
+    const fits = () => calls.filter((c) => "width" in c.frames[0]);
+    const el = label("Copy");
+    el.style.width = "40px";
+    morphChanges(el);
+    el.style.width = "60px";
+    el.textContent = "Copied";
+    await mutation();
+    expect(fits()[0].frames).toEqual([{ width: "40px" }, { width: "60px" }]);
+    expect(fits()[0].options).toMatchObject({ delay: 0, duration: ROLL_MS * FIT_GROW });
+
+    calls.length = 0;
+    const back = label("Copied");
+    back.style.width = "60px";
+    morphChanges(back);
+    back.style.width = "40px";
+    back.textContent = "Copy";
+    await mutation();
+    // It holds its width while the leaving letters fade, then closes; held, not released, during the wait.
+    expect(fits()[0].options).toMatchObject({ delay: ROLL_MS * EXIT_CLEAR, fill: "backwards" });
   });
 
   it("only crossfades under reduced motion", async () => {

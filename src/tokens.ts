@@ -21,8 +21,11 @@ export const SETTLE = "cubic-bezier(0.2, 0, 0, 1)";
 export const ROLL_MS = 600; // the spring reads by ~250ms; the rest is the soft landing that makes it feel smooth
 export const SPREAD = 0.25; // the sweep across every changed glyph takes this share of the roll. Delay follows position, so a glyph and its replacement move together
 
-export const RISE = 0.42; // em a glyph travels as it leaves or arrives: far enough to read as a roll, near enough to stay on its line
-export const SHRINK = 0.72; // a glyph's scale at the edge of its roll
+export const TRAVEL = 1; // share of its own box a glyph travels: a whole box, so a leaving glyph and its replacement never overlap
+export const EXIT_CLEAR = 0.55; // share of the roll by which a leaving glyph has faded out: gone before anything slides into its place
+export const ENTER_FROM = 0.2; // share of the roll before an arriving glyph starts to show: it comes into view already moving
+export const EDGE = 0.12; // em of soft fade where a rolling glyph crosses the window's top or bottom edge: inside a glyph box's own margin, so ink at rest is never dimmed
+export const FIT_GROW = 0.6; // share of the roll a growing element takes to reach its width: there before the letters arriving at its edge show
 export const BLUR = 0.12; // em of blur at the edge of a roll, so it scales with the type
 
 export const ICON_SHRINK = 0.25; // an icon or emoji shrinks this far, so it reads as one mark becoming another

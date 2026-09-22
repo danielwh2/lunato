@@ -1,7 +1,7 @@
 import { pair } from "./diff.js";
 import { hideCollapsed, isLineIcon, morphIcon } from "./lines.js";
 import { collect, trendOf, type Unit } from "./units.js";
-import { BLUR, FEATHER, ICON_BLUR, ICON_SHRINK, RISE, ROLL_MS, SETTLE, SHRINK, SPREAD, SPRING } from "./tokens.js";
+import { BLUR, EDGE, ENTER_FROM, EXIT_CLEAR, FEATHER, FIT_GROW, ICON_BLUR, ICON_SHRINK, ROLL_MS, SETTLE, SPREAD, SPRING, TRAVEL } from "./tokens.js";
 
 const bound = new WeakMap<HTMLElement, () => void>();
 
@@ -93,13 +93,22 @@ export function morphChanges(target: string | Element | null): () => void {
     const cs = getComputedStyle(el);
     return Object.fromEntries(KEYS.map((k) => [k, cs[k] || (k === "opacity" ? "1" : "none")]));
   };
-  /** A unit at the edge of its roll. `dir` 1 is below the line, -1 above. */
+  /**
+   * A glyph out of view: a whole box above the line (`dir` -1) or below it (1), straight, at full size. The window ends
+   * at the glyph boxes, so there it is clipped away entirely: an arriving glyph starts unseen and slides in whole.
+   */
   const gone = (unit: Unit, dir: number, still: boolean): Keyframe =>
     still ? { opacity: 0 }
     : unit.kind === "icon" ? { opacity: 0, translate: "0 0", scale: ICON_SHRINK, rotate: "0deg", filter: ICON_BLUR }
-    : { opacity: 0, translate: `0 ${dir * RISE}em`, scale: SHRINK, rotate: "0deg", filter: `blur(${BLUR}em)` };
+    : { opacity: 0, translate: `0 ${+(dir * TRAVEL * unit.rect.height).toFixed(2)}px`, scale: 1, rotate: "0deg", filter: `blur(${BLUR}em)` };
   const shown = (still: boolean): Keyframe =>
     still ? { opacity: 1 } : { opacity: 1, translate: "0 0", scale: 1, rotate: "0deg", filter: "blur(0)" };
+  // A glyph leaves faster than its replacement arrives: it fades out in the first part of its travel, so it is gone
+  // before anything glides or rolls into its place, and the new one fades in only once it is on its way.
+  const exit = (from: Keyframe, unit: Unit, dir: number, still: boolean): Keyframe[] =>
+    still || unit.kind === "icon" ? [from, gone(unit, dir, still)] : [from, { opacity: 0, offset: EXIT_CLEAR }, gone(unit, dir, still)];
+  const enter = (unit: Unit, dir: number, still: boolean): Keyframe[] =>
+    still || unit.kind === "icon" ? [gone(unit, dir, still), shown(still)] : [gone(unit, dir, still), { opacity: 0, offset: ENTER_FROM }, shown(still)];
   /** Delay by position, spread over a share of the roll, so the change sweeps left to right. */
   const sweep = (xs: number[]) => {
     const lo = Math.min(...xs);
@@ -139,21 +148,23 @@ export function morphChanges(target: string | Element | null): () => void {
 
     // The window: the element's padding box across, and down far enough to hold every glyph's own box, old and new,
     // so a tight line-height never cuts a descender. Where there is empty space between text and edge, motion fades out across it.
-    // Above and below, the window reaches one roll's travel past the glyph boxes and fades across it, so a rolling
-    // glyph dissolves through a soft band and is never sliced by a hard edge. A glyph at the end of its travel is
-    // already transparent, so the band only ever holds faint ink.
+    // Above and below, the window ends at the element or the glyph boxes, whichever reaches further, so nothing ever paints
+    // outside the text's own line. A roll travels a whole glyph box, so a glyph crosses that edge on its way in or out,
+    // softened by a thin fade that sits inside the box's own margin above the ascenders and below the descenders.
     const still = calm();
     const size = parseFloat(style.fontSize) || 16;
-    const travel = still ? 0 : size * RISE;
     const rects = [...next.map((u) => u.rect), ...was];
-    const top = Math.min(0, ...rects.map((r) => r.top - inner.top - travel));
-    const bottom = Math.max(inner.height, ...rects.map((r) => r.bottom - inner.top + travel));
+    const top = Math.min(0, ...rects.map((r) => r.top - inner.top));
+    const bottom = Math.max(inner.height, ...rects.map((r) => r.bottom - inner.top));
+    // Icons fill their box, so where one reaches an edge the fade gives way rather than dim it at rest.
+    const icons = next.filter((u) => u.kind === "icon").map((u) => u.rect);
     const room = (px: number, cap: number) => +(next.length ? Math.max(0, Math.min(cap, px)) : cap).toFixed(2); // rounded: float noise like 4.199999999999999px lands in the style
+    const edge = (gap: number) => +Math.max(0, Math.min(size * EDGE, gap)).toFixed(2);
     const fade = {
+      top: edge(Math.min(Infinity, ...icons.map((r) => r.top - inner.top - top))),
+      bottom: edge(Math.min(Infinity, ...icons.map((r) => inner.top + bottom - r.bottom))),
       left: room(Math.min(...next.map((u) => u.rect.left)) - inner.left, size * FEATHER),
       right: room(inner.left + inner.width - Math.max(...next.map((u) => u.rect.right)), size * FEATHER),
-      top: room(Math.min(...next.map((u) => u.rect.top)) - inner.top - top, travel || size * FEATHER),
-      bottom: room(inner.top + bottom - Math.max(...next.map((u) => u.rect.bottom)), travel || size * FEATHER),
     };
     const origin = { x: inner.left, y: inner.top + top };
     // One line only: a box pinned mid-fit must not re-wrap its text, and a wrapped element has no single width to ease.
@@ -201,7 +212,7 @@ export function morphChanges(target: string | Element | null): () => void {
         continue;
       }
       clear(f); // the box keeps any glide it has, and the ghost drifts on while it fades
-      const out = run(f, [now[o], gone(live[o], -trend, still)], ROLL_MS, still ? 0 : exitAt(was[o].left), SPRING, "forwards");
+      const out = run(f, exit(now[o], live[o], -trend, still), ROLL_MS, still ? 0 : exitAt(was[o].left), SPRING, "forwards");
       out.finished.then(() => box.remove(), () => box.remove());
     }
 
@@ -209,7 +220,7 @@ export function morphChanges(target: string | Element | null): () => void {
       const o = kept.get(n);
       if (o === undefined) {
         const l = make(unit, origin);
-        if (animate) run(l.face, [gone(unit, trend, still), shown(still)], ROLL_MS, still ? 0 : enterAt(unit.rect.left), SPRING, "backwards");
+        if (animate) run(l.face, enter(unit, trend, still), ROLL_MS, still ? 0 : enterAt(unit.rect.left), SPRING, "backwards");
         return l;
       }
       const old = live[o];
@@ -224,8 +235,8 @@ export function morphChanges(target: string | Element | null): () => void {
           const delay = still ? 0 : changeAt(unit.rect.left);
           const leavingFace = old.face;
           clear(leavingFace);
-          run(leavingFace, [now[o], gone(old, -trend, still)], ROLL_MS, delay, SPRING, "forwards").finished.then(() => leavingFace.remove(), () => leavingFace.remove());
-          run(f, [gone(unit, trend, still), shown(still)], ROLL_MS, delay, SPRING, "backwards");
+          run(leavingFace, exit(now[o], old, -trend, still), ROLL_MS, delay, SPRING, "forwards").finished.then(() => leavingFace.remove(), () => leavingFace.remove());
+          run(f, enter(unit, trend, still), ROLL_MS, delay, SPRING, "backwards");
         }
       }
       place(old.box, unit, origin);
@@ -242,7 +253,12 @@ export function morphChanges(target: string | Element | null): () => void {
     if (animate && !still && oneLine && fromWidth && toWidth && Math.abs(toWidth - fromWidth) >= 0.5) {
       wrap = host.style.whiteSpace;
       host.style.whiteSpace = "nowrap"; // a box narrower than its text mid-fit must not wrap it onto a second line
-      const fit = (fitting = run(host, [{ width: `${fromWidth}px` }, { width: `${toWidth}px` }], total, 0, SETTLE, "none"));
+      // The box never cuts a letter that is still showing. Growing, it reaches its new width ahead of the letters
+      // arriving at its edge; shrinking, it holds its width until the letters leaving it have faded, then closes.
+      const growing = toWidth > fromWidth;
+      const hold = growing ? 0 : ROLL_MS * EXIT_CLEAR;
+      const span = growing ? ROLL_MS * FIT_GROW : Math.max(total - hold, ROLL_MS * FIT_GROW);
+      const fit = (fitting = run(host, [{ width: `${fromWidth}px` }, { width: `${toWidth}px` }], span, hold, SETTLE, "backwards"));
       fit.finished.then(() => {
         if (fitting !== fit) return;
         fitting = undefined;

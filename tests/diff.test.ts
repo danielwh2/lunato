@@ -21,6 +21,17 @@ describe("pair", () => {
     expect(pair(units("£1,299.00"), units("£12,499.00"))).toEqual([[0, 0], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]]);
   });
 
+  it("lines digits up on the decimal point, not the end of the text", () => {
+    // 1.5 → 12.25: ones and tenths keep their slots; a tens digit and a hundredths digit arrive.
+    expect(pair(units("1.5"), units("12.25"))).toEqual([[0, 1], [1, 2], [2, 3]]);
+    expect(pair(units("12.25"), units("1.5"))).toEqual([[1, 0], [2, 1], [3, 2]]);
+    // 9.9 → 10: the ones slot rolls 9 to 0, the point and the tenths leave, the tens arrive.
+    expect(pair(units("9.9"), units("10"))).toEqual([[0, 1]]);
+    expect(pair(units("10"), units("9.9"))).toEqual([[1, 0]]);
+    // $0.5 → $1,000.75 around text: the dollar sign and the unit hold, ones and tenths keep their place.
+    expect(pair(units("$0.5 kg"), units("$1,000.75 kg"))).toEqual([[0, 0], [1, 5], [2, 6], [3, 7], [4, 9], [5, 10], [6, 11]]);
+  });
+
   it("keeps a nearby run of two or more, and ignores a lone shared letter", () => {
     expect(pair(units("xabq"), units("yyabz"))).toEqual([[1, 2], [2, 3]]);
     expect(pair(units("seven"), units("nine"))).toEqual([]);

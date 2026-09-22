@@ -28,6 +28,9 @@ describe("trendOf", () => {
     expect(trendOf("£1,299.00", "£999.99")).toBe(-1);
     expect(trendOf("9", "10")).toBe(1);
     expect(trendOf("2 of 9", "2 of 3")).toBe(-1);
+    expect(trendOf("1.5", "12.25")).toBe(1);
+    expect(trendOf("-3", "-8")).toBe(-1);
+    expect(trendOf("2024-01-01", "2024-01-02")).toBe(1); // hyphens in a date are not minus signs
   });
 
   it("counts words and a changed count of numbers as up", () => {

@@ -55,7 +55,7 @@ export function collect(host: Element, skip: Element): Unit[] {
   return units;
 }
 
-const NUMBER = /-?\d[\d,]*(?:\.\d+)?/g;
+const NUMBER = /(?:(?<!\w)-)?\d[\d,]*(?:\.\d+)?/g; // a minus only where no word or digit sits before it: 2024-01-01 is a date, not three numbers going negative
 const numbers = (text: string) => (text.match(NUMBER) ?? []).map((n) => parseFloat(n.replace(/,/g, "")));
 
 /** 1 when the text reads as going up, -1 as going down. The first number that differs decides; anything else counts as up. */

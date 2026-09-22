@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>lunato</title>
+  <style>
+    /* Warm paper, near-black ink, hairlines at a tenth of the ink. Night flips the same values. */
+    :root { color-scheme: light dark; --paper: #fbfbfa; --panel: #fff; --line: rgb(55 53 47 / 0.12); --wash: rgb(55 53 47 / 0.06); --ink: #1d1d1f; --ink-2: rgb(55 53 47 / 0.6); }
+    @media (prefers-color-scheme: dark) { :root { --paper: #191919; --panel: #202020; --line: rgb(255 255 255 / 0.1); --wash: rgb(255 255 255 / 0.06); --ink: #f5f5f7; --ink-2: rgb(255 255 255 / 0.55); } }
+    body { margin: 0; padding: 72px 24px; font: 14px/1.5 system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--paper); }
+    main { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    h1 { font-size: 14px; margin: 0 0 14px; }
+    h1 + p { margin: 0 0 24px; color: var(--ink-2); }
+    /* Each example: a hairline panel, a label above the morphing thing. Stacked, so a value growing never re-wraps its label and nothing is pushed past the panel at any width. Click the panel to change it. */
+    .ex { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); cursor: pointer; user-select: none; -webkit-user-select: none; }
+    .ex small { color: var(--ink-2); }
+    .ex:active { background: var(--wash); }
+    @media (hover: hover) { .ex:hover { border-color: var(--ink-2); } }
+    /* Changing values in tabular figures, so a digit that rolls lands in the same column it left. */
+    .num { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .word { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+    .emoji { font-size: 24px; }
+    /* The copy pill from the reference video: ink at rest, green once copied. The colour eases on the same curve as the width. */
+    .btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px 0 10px; border: 0; border-radius: 9999px; background: #111; color: #fff; font: inherit; font-size: 15px; font-weight: 600; transition: background-color 550ms cubic-bezier(0.22, 1, 0.36, 1); }
+    .btn[data-copied] { background: #22c55e; }
+    .btn svg { width: 16px; height: 16px; }
+    @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+    /* A square icon control, 32px, the line icon at 20px. Stroke set once on the svg so every line inherits it. */
+    .icon-btn { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: inherit; }
+    .icon-btn svg { width: 20px; height: 20px; overflow: visible; }
+  </style>
+</head>
+<body>
+  <main>
+    <div>
+      <h1>lunato</h1>
+      <p>Click an example. Letters, digits, emoji and icons that survive a change glide to where they now belong. Digits roll. The rest blurs in and out.</p>
+    </div>
+
+    <div class="ex" data-cycle="numbers"><small>A counter. Changed digits roll, down when the number falls.</small><span class="num" id="n">9</span></div>
+    <div class="ex" data-cycle="prices"><small>A price. Shared digits hold still.</small><span class="num" id="p">£1,299.00</span></div>
+    <div class="ex" data-cycle="words"><small>Words keep the letters they share.</small><span class="word" id="w">Loading</span></div>
+    <div class="ex" data-cycle="emoji"><small>Emoji morph like icons.</small><span class="emoji" id="e">🤍 Like</span></div>
+    <div class="ex" data-cycle="lines"><small>Line icons morph their lines. Arrows and chevrons turn; plus turns into cross.</small><button class="icon-btn" id="l" type="button" aria-label="Icon"></button></div>
+    <div class="ex" data-cycle="icons"><small>The reference video.</small><button class="btn" id="b" type="button"><svg data-key="copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>Copy</button></div>
+  </main>
+  <script type="module">
+    import { morphChanges } from "../dist/index.js";
+
+    const check = '<svg data-key="check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 8.5 3 3 7-7"/></svg>';
+    const copy = document.getElementById("b").innerHTML;
+
+    // Line icons on a 14-unit grid, one to three lines each. [x1, y1, x2, y2] per line.
+    const LINE_ICONS = {
+      menu: [[2.5, 4, 11.5, 4], [2.5, 7, 11.5, 7], [2.5, 10, 11.5, 10]],
+      cross: [[4, 4, 10, 10], [10, 4, 4, 10]],
+      plus: [[7, 3, 7, 11], [3, 7, 11, 7]],
+      minus: [[3, 7, 11, 7]],
+      check: [[2.5, 7, 5.5, 10.5], [5.5, 10.5, 11.5, 4]],
+      right: [[3, 7, 11, 7], [7, 3, 11, 7], [7, 11, 11, 7]],
+      down: [[7, 3, 7, 11], [11, 7, 7, 11], [3, 7, 7, 11]],
+      left: [[11, 7, 3, 7], [7, 11, 3, 7], [7, 3, 3, 7]],
+      up: [[7, 11, 7, 3], [3, 7, 7, 3], [11, 7, 7, 3]],
+      chevronRight: [[5, 3, 9, 7], [5, 11, 9, 7]],
+      chevronDown: [[11, 5, 7, 9], [3, 5, 7, 9]],
+      play: [[4, 3, 4, 11], [4, 11, 11, 7], [4, 3, 11, 7]],
+      pause: [[4.5, 3.5, 4.5, 10.5], [9.5, 3.5, 9.5, 10.5]],
+      download: [[3.5, 11, 10.5, 11], [10, 6, 7, 9], [4, 6, 7, 9]],
+    };
+    const lineIcon = (name) => `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${LINE_ICONS[name].map(([a, b, c, d]) => `<line x1="${a}" y1="${b}" x2="${c}" y2="${d}"/>`).join("")}</svg>`;
+    document.getElementById("l").innerHTML = lineIcon("menu");
+
+    // Each example cycles through its states on click.
+    const cycles = {
+      numbers: ["9", "10", "99", "100", "1,024", "42", "9"],
+      prices: ["£1,299.00", "£1,349.00", "£12,499.00", "£999.99", "£1,299.00"],
+      words: ["Loading", "Loaded", "Save changes", "Saved", "Loading"],
+      emoji: ["🤍 Like", "❤️ Liked", "❤️ 1", "❤️ 2", "❤️ 10", "🔥 10", "🤍 Like"],
+      icons: [copy, check + "Copied", copy],
+      lines: Object.keys(LINE_ICONS).map(lineIcon),
+    };
+    const targets = { numbers: "#n", prices: "#p", words: "#w", emoji: "#e", lines: "#l", icons: "#b" };
+    for (const [name, selector] of Object.entries(targets)) {
+      const el = document.querySelector(selector);
+      morphChanges(el);
+      let at = 0;
+      document.querySelector(`[data-cycle="${name}"]`).addEventListener("click", () => {
+        at = (at + 1) % cycles[name].length;
+        if (name === "lines") el.innerHTML = cycles[name][at];
+        else if (name === "icons") {
+          el.innerHTML = cycles[name][at];
+          el.toggleAttribute("data-copied", at === 1);
+        }
+        else el.textContent = cycles[name][at];
+      });
+    }
+  </script>
+</body>
+</html>

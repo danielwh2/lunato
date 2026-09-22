@@ -1,0 +1,52 @@
+{
+  "name": "lunato",
+  "version": "0.1.0",
+  "description": "Change an element's text and every letter, digit, emoji and icon that survives glides to where it now belongs. Digits roll, the rest blurs in and out. One function, zero dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Daniel Belyi",
+  "keywords": [
+    "animation",
+    "text",
+    "morph",
+    "number",
+    "counter",
+    "icon",
+    "emoji",
+    "flip",
+    "waapi",
+    "reduced-motion",
+    "zero-dependency"
+  ],
+  "sideEffects": [
+    "./dist/element.js"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./element": {
+      "types": "./dist/element.d.ts",
+      "import": "./dist/element.js"
+    }
+  },
+  "scripts": {
+    "prepack": "npm run build",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "demo": "npm run build && node scripts/demo.mjs"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.10.2",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.8"
+  }
+}

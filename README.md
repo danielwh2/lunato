@@ -1,6 +1,6 @@
 # lunato
 
-<img src="https://raw.githubusercontent.com/danielwh2/lunato/main/media/title.gif" alt="The title 'Only what changed moves.' with its last word morphing through rolls, turns, glides" width="100%">
+<img src="media/title.gif" alt="The title 'Only what changed moves.' with its last word morphing through rolls, turns, glides" width="100%">
 
 Change an element's text and only what changed moves. Letters, numbers, emoji and icons. One function, zero dependencies.
 
@@ -40,10 +40,10 @@ Safe with StrictMode, hot reload and server imports.
 ## What moves
 
 <p>
-  <img src="https://raw.githubusercontent.com/danielwh2/lunato/main/media/numbers.gif" alt="A share price rolling digit by digit" width="49%">
-  <img src="https://raw.githubusercontent.com/danielwh2/lunato/main/media/icons.gif" alt="A play button reshaping into pause" width="49%">
+  <img src="media/numbers.gif" alt="A share price rolling digit by digit" width="49%">
+  <img src="media/icons.gif" alt="A play button reshaping into pause" width="49%">
 </p>
-<img src="https://raw.githubusercontent.com/danielwh2/lunato/main/media/emoji.gif" alt="Reaction chips swapping emoji and counting up" width="100%">
+<img src="media/emoji.gif" alt="Reaction chips swapping emoji and counting up" width="100%">
 
 - **Text.** Shared letters hold still or glide; changed ones roll out and in, swept left to right.
 - **Numbers.** Digits pair from the right like an odometer, so 9 to 10 rolls the 9 and brings in only the 1. Falling numbers roll down.

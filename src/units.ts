@@ -6,6 +6,7 @@ export type Kind = "char" | "icon";
 export type Unit = {
   key: string; // what the diff compares. Every digit shares "#", so a digit slot survives a change of value and rolls in place
   kind: Kind;
+  word: number; // which word it belongs to, counted in reading order: the diff keeps unchanged words whole
   text: string; // the grapheme, or "" for an element
   node?: Element; // the element an icon unit clones
   rect: DOMRect; // where it is, in viewport pixels
@@ -19,12 +20,17 @@ const Segmenter = (Intl as typeof Intl & {
 }).Segmenter;
 const segmenter = Segmenter && new Segmenter(undefined, { granularity: "grapheme" });
 
-/** The text as graphemes with their UTF-16 offsets, whitespace left out: a space has nothing to draw and nothing to move. */
-export function graphemes(text: string): { segment: string; index: number }[] {
+/**
+ * The text as graphemes with their UTF-16 offsets, whitespace left out: a space has nothing to draw and nothing to move.
+ * `gap` marks a grapheme with whitespace before it, where a new word starts.
+ */
+export function graphemes(text: string): { segment: string; index: number; gap: boolean }[] {
   const all = segmenter
     ? [...segmenter.segment(text)]
     : Array.from(text).map((segment, i, parts) => ({ segment, index: parts.slice(0, i).join("").length }));
-  return all.filter(({ segment }) => segment.trim());
+  return all
+    .map((g, i) => ({ ...g, gap: i > 0 && !all[i - 1].segment.trim() }))
+    .filter(({ segment }) => segment.trim());
 }
 
 export const kindOf = (segment: string): Kind =>
@@ -34,20 +40,37 @@ export const kindOf = (segment: string): Kind =>
 export function collect(host: Element, skip: Element): Unit[] {
   const units: Unit[] = [];
   const range = document.createRange();
+  let word = 0;
+  let open = false; // whether the current word has anything in it yet; whitespace at a node's edge splits words across nodes
   const walk = (parent: Node) => {
     for (const node of parent.childNodes) {
       if (node === skip) continue;
       if (node.nodeType === Node.TEXT_NODE) {
-        for (const { segment, index } of graphemes(node.nodeValue ?? "")) {
+        const value = node.nodeValue ?? "";
+        const split = () => {
+          if (open) word++;
+          open = false;
+        };
+        if (/^\s/.test(value)) split();
+        for (const { segment, index, gap } of graphemes(value)) {
+          if (gap && open) word++;
+          open = true;
           range.setStart(node, index);
           range.setEnd(node, index + segment.length);
-          units.push({ key: /^\d$/.test(segment) ? "#" : segment, kind: kindOf(segment), text: segment, rect: range.getBoundingClientRect() });
+          units.push({ key: /^\d$/.test(segment) ? "#" : segment, kind: kindOf(segment), word, text: segment, rect: range.getBoundingClientRect() });
         }
+        if (/\s$/.test(value)) split();
       } else if (node instanceof Element) {
         // An element with text in it is a wrapper (a framework's span, a <b>); one without is an icon.
         if (node.textContent?.trim()) walk(node);
         // Morphable icons share one key, like digits: any of them can morph into any other in the same slot.
-        else units.push({ key: isMorphable(node) ? "~icon" : node.getAttribute("data-key") ?? node.outerHTML, kind: "icon", text: "", node, rect: node.getBoundingClientRect() });
+        else {
+          // An icon is a word of its own, so "Copy" becoming a check and "Copied" keeps them apart.
+          if (open) word++;
+          units.push({ key: isMorphable(node) ? "~icon" : node.getAttribute("data-key") ?? node.outerHTML, kind: "icon", word, text: "", node, rect: node.getBoundingClientRect() });
+          word++;
+          open = false;
+        }
       }
     }
   };

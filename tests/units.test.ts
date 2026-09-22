@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { graphemes, kindOf, trendOf } from "../src/units";
+import { collect, graphemes, kindOf, trendOf } from "../src/units";
 
 describe("graphemes", () => {
   it("splits into what the eye sees, leaving spaces out", () => {
@@ -36,5 +36,14 @@ describe("trendOf", () => {
   it("counts words and a changed count of numbers as up", () => {
     expect(trendOf("Copy", "Copied")).toBe(1);
     expect(trendOf("Like", "❤️ 1")).toBe(1);
+  });
+});
+
+describe("collect", () => {
+  it("numbers the words, across tags, spaces and icons", () => {
+    Range.prototype.getBoundingClientRect = () => new DOMRect();
+    const host = document.createElement("span");
+    host.innerHTML = "<b>Hel</b>lo world <svg></svg>ok";
+    expect(collect(host, document.createElement("i")).map((u) => u.word)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 3, 3]);
   });
 });

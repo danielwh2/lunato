@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { pair } from "../src/diff";
 
 const units = (s: string) => [...s].map((text) => ({ key: /\d/.test(text) ? "#" : text, text }));
+/** Like the page reads it: spaces dropped, each letter tagged with its word. */
+const sentence = (s: string) => s.split(" ").flatMap((w, word) => [...w].map((text) => ({ key: /\d/.test(text) ? "#" : text, text, word })));
+/** The kept letters of `after`, read back as text: what holds still or glides. */
+const kept = (before: string, after: string) => {
+  const b = sentence(after);
+  const keep = new Set(pair(sentence(before), b).map(([, j]) => j));
+  return b.map((x, j) => (keep.has(j) ? x.text : "_")).join("");
+};
 
 describe("pair", () => {
   it("keeps a shared start still: Copy into Copied keeps Cop", () => {
@@ -35,6 +43,18 @@ describe("pair", () => {
   it("keeps a nearby run of two or more, and ignores a lone shared letter", () => {
     expect(pair(units("xabq"), units("yyabz"))).toEqual([[1, 2], [2, 3]]);
     expect(pair(units("seven"), units("nine"))).toEqual([]);
+  });
+
+  it("keeps every unchanged word, however many edits sit between them", () => {
+    // Three corrections: fox, over, the and dog hold; brown, jumps and lazy roll, keeping only the endings they share.
+    expect(kept("the quick brown fox jumps over the lazy dog", "the quick red fox leaps over the sleepy dog")).toBe("thequick___fox___psoverthe_____ydog");
+    // A caption correcting itself mid-sentence: only the misheard word moves, and its shared t and "sday" hold inside it.
+    expect(kept("see you on tuesday at the cafe", "see you on thursday at the café")).toBe("seeyouont___sdayatthecaf_");
+  });
+
+  it("still counts numbers inside a sentence like an odometer", () => {
+    expect(kept("2 of 9 done", "2 of 10 done")).toBe("2of_0done");
+    expect(kept("costs $1.5 today", "costs $12.25 today")).toBe("costs$_2.2_today");
   });
 
   it("pairs nothing with an empty side", () => {

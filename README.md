@@ -45,7 +45,7 @@ Safe with StrictMode, hot reload and server imports.
 </p>
 <img src="media/emoji.gif" alt="Reaction chips swapping emoji and counting up" width="100%">
 
-- **Text.** Shared letters hold still or glide; changed ones roll out and in, swept left to right.
+- **Text.** Unchanged words hold still, however many edits sit between them, so a caption correcting itself only moves the words that changed. Inside a changed word, shared letters stay too.
 - **Numbers.** Digits pair from the right like an odometer, so 9 to 10 rolls the 9 and brings in only the 1. Falling numbers roll down.
 - **Emoji and icons.** Shrink and blur into the next one.
 - **Line icons.** An svg of up to three `<line>`s morphs into another, turning when it is the same drawing rotated. After Benji Taylor's [Morphing icons with Claude](https://benji.org/morphing-icons-with-claude).

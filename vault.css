@@ -124,13 +124,14 @@
 
 /* EffortChip, from effort-chip.tsx.
    A dot lights 30ms after the one before it in the fill order, on the spring, so a rise grows out from the centre and
-   a fall shrinks back into it. Unlit dots stay as faint pips, so the glyph keeps its square. At Max every dot steps
-   through the rainbow as flat colours, 2.6s a turn, each a little behind the one before. Reduced motion lights at once
+   a fall shrinks back into it. Unlit dots stay as faint pips, so the glyph keeps its square. Reaching Max, every dot
+   runs once through the rainbow as flat colours, out of the Max purple and back into it over 2s, each 40ms behind
+   the one before, so the colour sweeps across the glyph and then rests. Reduced motion lights at once
    and holds the level's colour. */
 .lunato-chip-dot { display: block; width: 3px; height: 3px; border-radius: 1px; background: currentColor; opacity: 0.15; scale: 0.6; transition: scale 320ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--rank) * 30ms), opacity 160ms cubic-bezier(0.2, 0, 0, 1) calc(var(--rank) * 30ms), background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
 .lunato-chip-dot[data-lit] { background: var(--c); opacity: 1; scale: 1; }
-.lunato-chip[data-max] .lunato-chip-dot { animation: lunato-chip-rainbow 2600ms linear calc(var(--k) * -290ms) infinite; }
-@keyframes lunato-chip-rainbow { 0%, 100% { background-color: #e11d48; } 20% { background-color: #d97706; } 40% { background-color: #059669; } 60% { background-color: #2563eb; } 80% { background-color: #7c3aed; } }
+.lunato-chip[data-max] .lunato-chip-dot { animation: lunato-chip-rainbow 2000ms linear calc(var(--k) * 40ms); }
+@keyframes lunato-chip-rainbow { 17% { background-color: #e11d48; } 33% { background-color: #d97706; } 50% { background-color: #059669; } 67% { background-color: #2563eb; } 83% { background-color: #7c3aed; } }
 @media (prefers-reduced-motion: reduce) {
   .lunato-chip-dot { transition: none; }
   .lunato-chip[data-max] .lunato-chip-dot { animation: none; }
@@ -141,8 +142,9 @@
    moved by a key, they spring onto the stop in 320ms. The dot grows 15% under the pointer and 25% while held, on the
    press timing; the hover rule comes first so the held size wins while a drag is also a hover. The word is the level's
    purple pushed 30% toward ink, so even Low reads at 3.8:1 on white (Medium 4.7, High 6.0, X-High 7.4, Max 9.3), and
-   changes colour over 160ms. At Max the fill, the lit stops, the dot's ring and the word step through the rainbow as
-   flat colours, 2.6s a turn, each part 130ms behind the one to its left, so the colours run along the track into the word.
+   changes colour over 160ms. Reaching Max, the fill, the lit stops, the dot's ring and the word run once through the
+   rainbow as flat colours over 2s, each part 90ms behind the one to its left, so the colours run along the track into
+   the word and then rest on the Max purple.
    The word changes colour, never paints a gradient: lunato draws its letters as copies in the current colour over the
    hidden originals, and a gradient clipped to the text would show through the originals as a second word. Reduced
    motion: no spring and no rainbow motion; the colours still change. */
@@ -154,12 +156,12 @@
 .lunato-slider[data-dragging] :is(.lunato-slider-fill, .lunato-slider-knob) { transition-property: background-color, scale, border-width; }
 .lunato-slider[data-dragging] .lunato-slider-knob { scale: 1.25; }
 .lunato-slider-word { --i: var(--n); color: color-mix(in oklch, var(--c) 70%, oklch(0.205 0 0)); transition: color 160ms cubic-bezier(0.2, 0, 0, 1); }
-.lunato-slider[data-max] :is(.lunato-slider-fill, .lunato-slider-stop[data-on]) { animation: lunato-slider-rainbow 2600ms linear calc((var(--i) - var(--n)) * 130ms) infinite; }
-.lunato-slider[data-max] .lunato-slider-knob { border-width: 2px; border-color: var(--c); animation: lunato-slider-ring 2600ms linear calc((var(--i) - var(--n)) * 130ms) infinite; }
-.lunato-slider[data-max] .lunato-slider-word { animation: lunato-slider-ink 2600ms linear calc((var(--i) - var(--n)) * 130ms) infinite; }
-@keyframes lunato-slider-rainbow { 0%, 100% { background-color: #e11d48; } 20% { background-color: #d97706; } 40% { background-color: #059669; } 60% { background-color: #2563eb; } 80% { background-color: #7c3aed; } }
-@keyframes lunato-slider-ring { 0%, 100% { border-color: #e11d48; } 20% { border-color: #d97706; } 40% { border-color: #059669; } 60% { border-color: #2563eb; } 80% { border-color: #7c3aed; } }
-@keyframes lunato-slider-ink { 0%, 100% { color: #e11d48; } 20% { color: #d97706; } 40% { color: #059669; } 60% { color: #2563eb; } 80% { color: #7c3aed; } }
+.lunato-slider[data-max] :is(.lunato-slider-fill, .lunato-slider-stop[data-on]) { animation: lunato-slider-rainbow 2000ms linear calc(var(--i) * 90ms); }
+.lunato-slider[data-max] .lunato-slider-knob { border-width: 2px; border-color: var(--c); animation: lunato-slider-ring 2000ms linear calc(var(--i) * 90ms); }
+.lunato-slider[data-max] .lunato-slider-word { animation: lunato-slider-ink 2000ms linear calc(var(--i) * 90ms); }
+@keyframes lunato-slider-rainbow { 17% { background-color: #e11d48; } 33% { background-color: #d97706; } 50% { background-color: #059669; } 67% { background-color: #2563eb; } 83% { background-color: #7c3aed; } }
+@keyframes lunato-slider-ring { 17% { border-color: #e11d48; } 33% { border-color: #d97706; } 50% { border-color: #059669; } 67% { border-color: #2563eb; } 83% { border-color: #7c3aed; } }
+@keyframes lunato-slider-ink { 17% { color: #e11d48; } 33% { color: #d97706; } 50% { color: #059669; } 67% { color: #2563eb; } 83% { color: #7c3aed; } }
 @media (prefers-reduced-motion: reduce) {
   .lunato-slider-fill, .lunato-slider-knob { transition-property: background-color, border-width; }
   .lunato-slider[data-max] :is(.lunato-slider-word, .lunato-slider-fill, .lunato-slider-stop[data-on], .lunato-slider-knob) { animation: none; }
@@ -169,8 +171,8 @@
    A ruler 24px a level, with three short ticks between the long ones, slid under a fixed ink mark in a 76px window
    that fades out at either side. The long ticks are the levels, lit in the level's purple up to the chosen one. The
    tape follows a drag with no easing and, let go, glides to its level over 420ms, decelerating the way a thrown wheel
-   comes to rest; a key moves it the same way. At Max the mark and the word step through the rainbow. Reduced motion:
-   the tape moves at once. */
+   comes to rest; a key moves it the same way. Reaching Max, the mark and the word run once through the rainbow.
+   Reduced motion: the tape moves at once. */
 .lunato-tape-window { cursor: grab; mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); }
 .lunato-tape[data-dragging] .lunato-tape-window { cursor: grabbing; }
 .lunato-tape-strip { translate: calc(var(--p) * -24px - 1px) 0; transition: translate 420ms cubic-bezier(0.2, 0, 0, 1); }
@@ -179,27 +181,28 @@
 .lunato-tape-level { stroke: oklch(0.8 0 0); stroke-width: 1.5; stroke-linecap: round; transition: stroke 160ms cubic-bezier(0.2, 0, 0, 1); }
 .lunato-tape-level[data-on] { stroke: var(--c); }
 .lunato-tape-mark { position: absolute; left: 50%; top: 5px; width: 2px; height: 18px; margin-left: -1px; border-radius: 1px; background: oklch(0.205 0 0); }
-.lunato-tape[data-max] .lunato-tape-mark { animation: lunato-effort-paint 2600ms linear infinite; }
-.lunato-tape[data-max] .lunato-effort-word { animation: lunato-effort-ink 2600ms linear infinite; }
+.lunato-tape[data-max] .lunato-tape-mark { animation: lunato-effort-paint 2000ms linear; }
+.lunato-tape[data-max] .lunato-effort-word { animation: lunato-effort-ink 2000ms linear; }
 @media (prefers-reduced-motion: reduce) {
   .lunato-tape-strip { transition: none; }
   .lunato-tape[data-max] :is(.lunato-tape-mark, .lunato-effort-word) { animation: none; }
 }
 
 /* The effort word, shared by EffortTape, EffortSegments and EffortCharge: the level's purple pushed 30%
-   toward ink, so even Low reads at 3.8:1 on white, changing over 160ms. The rainbow the four step through at Max, as
-   flat colours, one keyframe set a property: colour, background, fill and stroke. */
+   toward ink, so even Low reads at 3.8:1 on white, changing over 160ms. The rainbow the four run through once on
+   reaching Max, as flat colours over 2s, one keyframe set a property: colour, background, fill and stroke. The sets
+   leave out their first and last frames, so each pass starts and ends on the part's own colour and then rests. */
 .lunato-effort-word { color: color-mix(in oklch, var(--c) 70%, oklch(0.205 0 0)); transition: color 160ms cubic-bezier(0.2, 0, 0, 1); }
-@keyframes lunato-effort-ink { 0%, 100% { color: #e11d48; } 20% { color: #d97706; } 40% { color: #059669; } 60% { color: #2563eb; } 80% { color: #7c3aed; } }
-@keyframes lunato-effort-paint { 0%, 100% { background-color: #e11d48; } 20% { background-color: #d97706; } 40% { background-color: #059669; } 60% { background-color: #2563eb; } 80% { background-color: #7c3aed; } }
-@keyframes lunato-effort-stroke { 0%, 100% { stroke: #e11d48; fill: #e11d48; } 20% { stroke: #d97706; fill: #d97706; } 40% { stroke: #059669; fill: #059669; } 60% { stroke: #2563eb; fill: #2563eb; } 80% { stroke: #7c3aed; fill: #7c3aed; } }
+@keyframes lunato-effort-ink { 17% { color: #e11d48; } 33% { color: #d97706; } 50% { color: #059669; } 67% { color: #2563eb; } 83% { color: #7c3aed; } }
+@keyframes lunato-effort-paint { 17% { background-color: #e11d48; } 33% { background-color: #d97706; } 50% { background-color: #059669; } 67% { background-color: #2563eb; } 83% { background-color: #7c3aed; } }
+@keyframes lunato-effort-stroke { 17% { stroke: #e11d48; fill: #e11d48; } 33% { stroke: #d97706; fill: #d97706; } 50% { stroke: #059669; fill: #059669; } 67% { stroke: #2563eb; fill: #2563eb; } 83% { stroke: #7c3aed; fill: #7c3aed; } }
 
 /* EffortCharge, from effort-charge.tsx.
    A 1.5px ring round a bolt, filled in the level's purple from twelve o'clock: at rest to the chosen level, easing
    there over 320ms; while held, straight from the charge with no easing, so it climbs at the hold's own pace. Each
    level has a tick on the ring that lights as the fill reaches it, and reaching one sends a pulse out from the dial,
-   a ring that grows 30% and fades over 360ms. The dial sinks 4% while held. At Max the ring, the ticks and the word
-   step through the rainbow. Reduced motion: no pulse, no easing. */
+   a ring that grows 30% and fades over 360ms. The dial sinks 4% while held. Reaching Max, the ring, the ticks
+   and the word run once through the rainbow. Reduced motion: no pulse, no easing. */
 .lunato-charge-track { fill: none; stroke: oklch(0.922 0 0); stroke-width: 1.5; }
 .lunato-charge-fill { fill: none; stroke: var(--c); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 100 200; stroke-dashoffset: calc(100 - var(--fill) * 100); transition: stroke-dashoffset 320ms cubic-bezier(0.2, 0, 0, 1), stroke 160ms cubic-bezier(0.2, 0, 0, 1); }
 .lunato-charge[data-charging] .lunato-charge-fill { transition-property: stroke; }
@@ -210,8 +213,8 @@
 .lunato-charge[data-charging] .lunato-charge-dial { scale: 0.96; }
 .lunato-charge-pulse { position: absolute; inset: 2.5px; border: 1.5px solid var(--c); border-radius: 50%; opacity: 0; pointer-events: none; animation: lunato-charge-pulse 360ms cubic-bezier(0.2, 0, 0, 1); }
 @keyframes lunato-charge-pulse { from { opacity: 0.6; scale: 1; } to { opacity: 0; scale: 1.3; } }
-.lunato-charge[data-max] :is(.lunato-charge-fill, .lunato-charge-tick[data-on]) { animation: lunato-effort-stroke 2600ms linear infinite; }
-.lunato-charge[data-max] .lunato-effort-word { animation: lunato-effort-ink 2600ms linear infinite; }
+.lunato-charge[data-max] :is(.lunato-charge-fill, .lunato-charge-tick[data-on]) { animation: lunato-effort-stroke 2000ms linear; }
+.lunato-charge[data-max] .lunato-effort-word { animation: lunato-effort-ink 2000ms linear; }
 @media (prefers-reduced-motion: reduce) {
   .lunato-charge-fill { transition-property: stroke; }
   .lunato-charge-pulse { display: none; }
@@ -221,16 +224,16 @@
 /* EffortSegments, from effort-segments.tsx.
    A sunken tray padded 2px round five 16px segments, and a white thumb, cornered 8px inside the tray's 10px, that
    springs to the chosen one in 460ms on the overshoot curve, as the vault's switches do. Each segment's mark stands a
-   step taller than the last, lit in the level's purple up to the chosen one. The thumb sinks 4% while pressed. At Max
-   the lit marks and the word step through the rainbow. Reduced motion: the thumb moves at once. */
+   step taller than the last, lit in the level's purple up to the chosen one. The thumb sinks 4% while pressed. Reaching
+   Max, the lit marks and the word run once through the rainbow. Reduced motion: the thumb moves at once. */
 .lunato-segments-tray { padding: 2px; border-radius: 10px; background: rgb(0 0 0 / 0.045); corner-shape: squircle; }
 .lunato-segments-thumb { position: absolute; left: 2px; top: 2px; width: 16px; height: 20px; border-radius: 8px; corner-shape: squircle; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.08); translate: calc(var(--at) * 16px) 0; transition: translate 460ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 120ms cubic-bezier(0.2, 0, 0, 1); }
 .lunato-segments[data-held] .lunato-segments-thumb { scale: 0.96; }
 .lunato-segments-cell { position: relative; display: grid; place-items: end center; width: 16px; height: 20px; padding-bottom: 5px; box-sizing: border-box; }
 .lunato-segments-cell i { display: block; width: 2px; border-radius: 1px; background: oklch(0.8 0 0); transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
 .lunato-segments-cell i[data-on] { background: var(--c); }
-.lunato-segments[data-max] .lunato-segments-cell i[data-on] { animation: lunato-effort-paint 2600ms linear infinite; }
-.lunato-segments[data-max] .lunato-effort-word { animation: lunato-effort-ink 2600ms linear infinite; }
+.lunato-segments[data-max] .lunato-segments-cell i[data-on] { animation: lunato-effort-paint 2000ms linear; }
+.lunato-segments[data-max] .lunato-effort-word { animation: lunato-effort-ink 2000ms linear; }
 @media (prefers-reduced-motion: reduce) {
   .lunato-segments-thumb { transition-property: scale; }
   .lunato-segments[data-max] :is(.lunato-segments-cell i[data-on], .lunato-effort-word) { animation: none; }
@@ -296,7 +299,7 @@
 /* MaxBurst, from max-burst.tsx.
    Reaching Max: a ring in Max's purple flares from 60% to 2.2 times its 16px over 520ms as it fades, and eight 3px
    sparks fly 11 to 14px out, shrinking to 40% as they fade over 560ms, all on the plain curve, so the moment lands
-   and is gone before the next move. Reduced motion: no burst; the rainbow still says it is Max. */
+   and is gone before the next move. Reduced motion: no burst, and no rainbow either; the Max purple says it. */
 .lunato-burst { position: absolute; left: 50%; top: 50%; z-index: 1; width: 0; height: 0; pointer-events: none; }
 .lunato-burst::before { content: ""; position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; box-sizing: border-box; border: 1.5px solid #9c1fae; border-radius: 50%; opacity: 0; animation: lunato-burst-ring 520ms cubic-bezier(0.2, 0, 0, 1); }
 .lunato-burst i { position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%; opacity: 0; animation: lunato-burst-spark 560ms cubic-bezier(0.2, 0, 0, 1); }

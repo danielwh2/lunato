@@ -8,8 +8,11 @@
 function spring(damping: number, stops: number) {
   const w = 7 / damping; // e^-7 is under 0.1%
   const wd = w * Math.sqrt(1 - damping * damping);
-  const at = (t: number) => 1 - Math.exp(-damping * w * t) * (Math.cos(wd * t) + ((damping * w) / wd) * Math.sin(wd * t));
-  const ys = Array.from({ length: stops }, (_, i) => (i === stops - 1 ? 1 : +at(i / (stops - 1)).toFixed(4)));
+  const at = (t: number) =>
+    1 - Math.exp(-damping * w * t) * (Math.cos(wd * t) + ((damping * w) / wd) * Math.sin(wd * t));
+  const ys = Array.from({ length: stops }, (_, i) =>
+    i === stops - 1 ? 1 : +at(i / (stops - 1)).toFixed(4),
+  );
   return `linear(${ys.join(", ")})`;
 }
 

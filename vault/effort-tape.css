@@ -1,0 +1,54 @@
+/* The strip steps 24px a level, the same TICK effort-tape.tsx draws the ruler on; let go, it decelerates the way a
+   thrown wheel comes to rest. */
+.lunato-tape-window {
+  cursor: grab;
+  mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+}
+.lunato-tape[data-dragging] .lunato-tape-window {
+  cursor: grabbing;
+}
+.lunato-tape-strip {
+  translate: calc(var(--p) * -24px - 1px) 0;
+  transition: translate 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-tape[data-dragging] .lunato-tape-strip {
+  transition: none;
+}
+.lunato-tape-minor {
+  stroke: oklch(0.87 0 0);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+.lunato-tape-level {
+  stroke: oklch(0.8 0 0);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transition: stroke 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-tape-level[data-on] {
+  stroke: var(--c);
+}
+.lunato-tape-mark {
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 2px;
+  height: 18px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: oklch(0.205 0 0);
+}
+.lunato-tape[data-max] .lunato-tape-mark {
+  animation: lunato-effort-paint 2000ms linear;
+}
+.lunato-tape[data-max] .lunato-effort-word {
+  animation: lunato-effort-ink 2000ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-tape-strip {
+    transition: none;
+  }
+  .lunato-tape[data-max] :is(.lunato-tape-mark, .lunato-effort-word) {
+    animation: none;
+  }
+}

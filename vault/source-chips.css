@@ -1,0 +1,20 @@
+/* --i is a badge's place among the ones that arrived together, from source-chips.tsx, so they come in one after another. */
+.lunato-badge-in {
+  transition:
+    opacity 360ms cubic-bezier(0.2, 0, 0, 1),
+    translate 360ms cubic-bezier(0.2, 0, 0, 1),
+    filter 360ms cubic-bezier(0.2, 0, 0, 1);
+  transition-delay: calc(var(--i) * 50ms);
+}
+@starting-style {
+  .lunato-badge-in {
+    opacity: 0;
+    translate: 0 4px;
+    filter: blur(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-badge-in {
+    transition-property: opacity;
+  }
+}

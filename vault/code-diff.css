@@ -1,0 +1,89 @@
+/* The rise and blur sit on the row's children, inside its clip: on the row itself they would spill past the scroll
+   box's edges mid-entrance and flash a scrollbar. */
+.lunato-diff-line {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-diff-row {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  padding-right: 10px;
+  color: oklch(0.556 0 0);
+  transition:
+    background-color 160ms cubic-bezier(0.2, 0, 0, 1),
+    color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-diff-row > * {
+  transition:
+    opacity 360ms cubic-bezier(0.2, 0, 0, 1) 80ms,
+    translate 360ms cubic-bezier(0.2, 0, 0, 1) 80ms,
+    filter 360ms cubic-bezier(0.2, 0, 0, 1) 80ms,
+    text-decoration-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-diff-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+  text-decoration: line-through transparent;
+}
+.lunato-diff-line[data-kind="add"] .lunato-diff-row {
+  background-color: rgb(22 163 74 / 0.1);
+  color: oklch(0.205 0 0);
+}
+.lunato-diff-line[data-kind="add"] .lunato-diff-row > :first-child {
+  color: oklch(0.527 0.154 150.069);
+}
+.lunato-diff-line[data-kind="del"] .lunato-diff-row {
+  background-color: rgb(220 38 38 / 0.08);
+}
+.lunato-diff-line[data-kind="del"] .lunato-diff-row > :first-child {
+  color: oklch(0.577 0.245 27.325);
+}
+.lunato-diff-line[data-kind="del"] .lunato-diff-text {
+  text-decoration-color: rgb(220 38 38 / 0.6);
+}
+@starting-style {
+  .lunato-diff-line[data-kind="add"] {
+    grid-template-rows: 0fr;
+  }
+  .lunato-diff-line[data-kind="add"] .lunato-diff-row > * {
+    opacity: 0;
+    translate: 0 4px;
+    filter: blur(2px);
+  }
+}
+.lunato-diff-caret::after {
+  content: "";
+  display: inline-block;
+  width: 1.5px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  animation: lunato-diff-caret 1s ease-in-out infinite;
+}
+@keyframes lunato-diff-caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-diff-line {
+    transition: none;
+  }
+  .lunato-diff-row > * {
+    translate: none;
+    filter: none;
+    transition-property: opacity, text-decoration-color;
+  }
+  .lunato-diff-caret::after {
+    animation: none;
+  }
+}

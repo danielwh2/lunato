@@ -1,0 +1,42 @@
+/* The flash's corner is the card's 12px minus the 3px padding and 1px border. */
+.lunato-inline-row {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-inline-row > div {
+  min-height: 0;
+  overflow: hidden;
+}
+@starting-style {
+  .lunato-inline-row[data-new] {
+    grid-template-rows: 0fr;
+  }
+}
+.lunato-inline-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  corner-shape: squircle;
+  background: rgb(245 158 11 / 0.16);
+  opacity: 0;
+  pointer-events: none;
+  animation: lunato-inline-flash 1200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-inline-flash[data-initial] {
+  animation: none;
+}
+@keyframes lunato-inline-flash {
+  0%,
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-inline-row {
+    transition: none;
+  }
+}

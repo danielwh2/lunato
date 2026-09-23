@@ -1,0 +1,20 @@
+/* PromptError rises in above its panel, which never moves for it, and leaves at once when the error clears, as a retry
+   is already under way. */
+.lunato-prompt-error {
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    translate 220ms cubic-bezier(0.2, 0, 0, 1),
+    filter 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+@starting-style {
+  .lunato-prompt-error {
+    opacity: 0;
+    translate: 0 4px;
+    filter: blur(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-prompt-error {
+    transition-property: opacity;
+  }
+}

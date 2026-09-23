@@ -13,11 +13,16 @@ export type Unit = {
 };
 
 // TypeScript's ES2020 lib predates Segmenter; without it a flag or a family emoji splits into parts.
-const Segmenter = (Intl as typeof Intl & {
-  Segmenter?: new (locale: undefined, options: { granularity: "grapheme" }) => {
-    segment(text: string): Iterable<{ segment: string; index: number }>;
-  };
-}).Segmenter;
+const Segmenter = (
+  Intl as typeof Intl & {
+    Segmenter?: new (
+      locale: undefined,
+      options: { granularity: "grapheme" },
+    ) => {
+      segment(text: string): Iterable<{ segment: string; index: number }>;
+    };
+  }
+).Segmenter;
 const segmenter = Segmenter && new Segmenter(undefined, { granularity: "grapheme" });
 
 /**
@@ -27,7 +32,10 @@ const segmenter = Segmenter && new Segmenter(undefined, { granularity: "grapheme
 export function graphemes(text: string): { segment: string; index: number; gap: boolean }[] {
   const all = segmenter
     ? [...segmenter.segment(text)]
-    : Array.from(text).map((segment, i, parts) => ({ segment, index: parts.slice(0, i).join("").length }));
+    : Array.from(text).map((segment, i, parts) => ({
+        segment,
+        index: parts.slice(0, i).join("").length,
+      }));
   return all
     .map((g, i) => ({ ...g, gap: i > 0 && !all[i - 1].segment.trim() }))
     .filter(({ segment }) => segment.trim());
@@ -57,7 +65,13 @@ export function collect(host: Element, skip: Element): Unit[] {
           open = true;
           range.setStart(node, index);
           range.setEnd(node, index + segment.length);
-          units.push({ key: /^\d$/.test(segment) ? "#" : segment, kind: kindOf(segment), word, text: segment, rect: range.getBoundingClientRect() });
+          units.push({
+            key: /^\d$/.test(segment) ? "#" : segment,
+            kind: kindOf(segment),
+            word,
+            text: segment,
+            rect: range.getBoundingClientRect(),
+          });
         }
         if (/\s$/.test(value)) split();
       } else if (node instanceof Element) {
@@ -67,7 +81,14 @@ export function collect(host: Element, skip: Element): Unit[] {
         else {
           // An icon is a word of its own, so "Copy" becoming a check and "Copied" keeps them apart.
           if (open) word++;
-          units.push({ key: isMorphable(node) ? "~icon" : node.getAttribute("data-key") ?? node.outerHTML, kind: "icon", word, text: "", node, rect: node.getBoundingClientRect() });
+          units.push({
+            key: isMorphable(node) ? "~icon" : (node.getAttribute("data-key") ?? node.outerHTML),
+            kind: "icon",
+            word,
+            text: "",
+            node,
+            rect: node.getBoundingClientRect(),
+          });
           word++;
           open = false;
         }
@@ -79,7 +100,8 @@ export function collect(host: Element, skip: Element): Unit[] {
 }
 
 const NUMBER = /(?:(?<!\w)-)?\d[\d,]*(?:\.\d+)?/g; // a minus only where no word or digit sits before it: 2024-01-01 is a date, not three numbers going negative
-const numbers = (text: string) => (text.match(NUMBER) ?? []).map((n) => parseFloat(n.replace(/,/g, "")));
+const numbers = (text: string) =>
+  (text.match(NUMBER) ?? []).map((n) => parseFloat(n.replace(/,/g, "")));
 
 /** 1 when the text reads as going up, -1 as going down. The first number that differs decides; anything else counts as up. */
 export function trendOf(before: string, after: string): 1 | -1 {

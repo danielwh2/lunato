@@ -1,0 +1,44 @@
+/* Waiting for a voice, the bars breathe out of step, so it reads as ready to listen rather than loading; listening,
+   they dance twice as fast, the way a level meter jumps to a voice. */
+.lunato-voice[data-voice] line {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lunato-voice-breathe 1.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+.lunato-voice[data-voice] line:nth-child(2) {
+  animation-delay: -0.47s;
+}
+.lunato-voice[data-voice] line:nth-child(3) {
+  animation-delay: -0.93s;
+}
+.lunato-voice[data-listening] line {
+  animation-name: lunato-voice-listen;
+  animation-duration: 0.7s;
+}
+@keyframes lunato-voice-breathe {
+  0%,
+  100% {
+    scale: 1 0.7;
+  }
+  50% {
+    scale: 1 1;
+  }
+}
+@keyframes lunato-voice-listen {
+  0%,
+  100% {
+    scale: 1 0.35;
+  }
+  50% {
+    scale: 1 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-voice[data-voice] line {
+    animation: none;
+    scale: 1 0.7;
+  }
+  .lunato-voice[data-listening] line {
+    scale: 1 1;
+  }
+}

@@ -1,0 +1,144 @@
+/* Shared by the effort meters. The word is the level's purple pushed 30% toward ink, so even Low reads at 3.8:1 on
+   white (Medium 4.7, High 6.0, X-High 7.4, Max 9.3). It changes colour, never paints a gradient: lunato draws its
+   letters as copies in the current colour over the hidden originals, and a gradient clipped to the text would show
+   through the originals as a second word.
+   The rainbow, run once on reaching Max, one keyframe set a property. Each set leaves out its first and last frames,
+   so a pass starts and ends on the part's own colour and then rests. */
+.lunato-effort-word {
+  color: color-mix(in oklch, var(--c) 70%, oklch(0.205 0 0));
+  transition: color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes lunato-effort-ink {
+  17% {
+    color: #e11d48;
+  }
+  33% {
+    color: #d97706;
+  }
+  50% {
+    color: #059669;
+  }
+  67% {
+    color: #2563eb;
+  }
+  83% {
+    color: #7c3aed;
+  }
+}
+@keyframes lunato-effort-paint {
+  17% {
+    background-color: #e11d48;
+  }
+  33% {
+    background-color: #d97706;
+  }
+  50% {
+    background-color: #059669;
+  }
+  67% {
+    background-color: #2563eb;
+  }
+  83% {
+    background-color: #7c3aed;
+  }
+}
+@keyframes lunato-effort-ring {
+  17% {
+    border-color: #e11d48;
+  }
+  33% {
+    border-color: #d97706;
+  }
+  50% {
+    border-color: #059669;
+  }
+  67% {
+    border-color: #2563eb;
+  }
+  83% {
+    border-color: #7c3aed;
+  }
+}
+@keyframes lunato-effort-stroke {
+  17% {
+    stroke: #e11d48;
+    fill: #e11d48;
+  }
+  33% {
+    stroke: #d97706;
+    fill: #d97706;
+  }
+  50% {
+    stroke: #059669;
+    fill: #059669;
+  }
+  67% {
+    stroke: #2563eb;
+    fill: #2563eb;
+  }
+  83% {
+    stroke: #7c3aed;
+    fill: #7c3aed;
+  }
+}
+
+/* MaxBurst: a ring and eight sparks, each spark's throw in --x and --y from effort.tsx. */
+.lunato-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.lunato-burst::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1.5px solid #9c1fae;
+  border-radius: 50%;
+  opacity: 0;
+  animation: lunato-burst-ring 520ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-burst i {
+  position: absolute;
+  left: -1.5px;
+  top: -1.5px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: lunato-burst-spark 560ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes lunato-burst-ring {
+  from {
+    opacity: 0.7;
+    scale: 0.6;
+  }
+  to {
+    opacity: 0;
+    scale: 2.2;
+  }
+}
+@keyframes lunato-burst-spark {
+  from {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    translate: var(--x) var(--y);
+    scale: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-burst {
+    display: none;
+  }
+}

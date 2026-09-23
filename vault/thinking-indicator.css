@@ -1,0 +1,35 @@
+/* The two marks share one cell and never show together: the incoming one waits 140ms for the outgoing one to go.
+   ThinkingThoughts uses these rules for its line too. */
+.lunato-thinking-loader,
+.lunato-thinking-done {
+  grid-area: 1 / 1;
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    scale 220ms cubic-bezier(0.2, 0, 0, 1),
+    filter 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-thinking .lunato-thinking-done,
+.lunato-thinking[data-done] .lunato-thinking-loader {
+  opacity: 0;
+  scale: 0.25;
+  filter: blur(4px);
+  transition-delay: 0s;
+}
+.lunato-thinking .lunato-thinking-loader,
+.lunato-thinking[data-done] .lunato-thinking-done {
+  opacity: 1;
+  scale: 1;
+  filter: none;
+  transition-delay: 140ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-thinking-loader,
+  .lunato-thinking-done {
+    transition-property: opacity;
+  }
+  .lunato-thinking .lunato-thinking-done,
+  .lunato-thinking[data-done] .lunato-thinking-loader {
+    scale: 1;
+    filter: none;
+  }
+}

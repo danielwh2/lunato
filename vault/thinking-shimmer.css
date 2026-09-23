@@ -1,0 +1,62 @@
+/* The band is clear of the words at both ends of the loop, so pass follows pass without a seam. A change slides the
+   old line up as the new one rises from below, 40ms behind, so they cross rather than stack. */
+.lunato-shimmer {
+  background: linear-gradient(
+      90deg,
+      oklch(0.556 0 0) 0 35%,
+      oklch(0.205 0 0) 50%,
+      oklch(0.556 0 0) 65% 100%
+    )
+    0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: lunato-shimmer 2000ms linear infinite;
+}
+@keyframes lunato-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+.lunato-shimmer-line {
+  animation: lunato-shimmer-in 260ms cubic-bezier(0.2, 0, 0, 1) 40ms backwards;
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    translate 220ms cubic-bezier(0.2, 0, 0, 1),
+    filter 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-shimmer-line[data-leaving] {
+  opacity: 0;
+  translate: 0 -60%;
+  filter: blur(2px);
+}
+@keyframes lunato-shimmer-in {
+  from {
+    opacity: 0;
+    translate: 0 60%;
+    filter: blur(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-shimmer {
+    animation: none;
+    background: none;
+    color: inherit;
+  }
+  .lunato-shimmer-line {
+    animation-name: lunato-shimmer-fade;
+    transition-property: opacity;
+  }
+  .lunato-shimmer-line[data-leaving] {
+    translate: none;
+    filter: none;
+  }
+}
+@keyframes lunato-shimmer-fade {
+  from {
+    opacity: 0;
+  }
+}

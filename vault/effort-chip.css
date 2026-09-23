@@ -1,0 +1,31 @@
+/* --rank is a dot's place in the fill order, so a rise grows out from the centre; --k is its slot, so the rainbow
+   sweeps across the glyph. Both from effort-chip.tsx. Unlit dots stay as faint pips, so the glyph keeps its square. */
+.lunato-chip-dot {
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.15;
+  scale: 0.6;
+  transition:
+    scale 320ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--rank) * 30ms),
+    opacity 160ms cubic-bezier(0.2, 0, 0, 1) calc(var(--rank) * 30ms),
+    background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-chip-dot[data-lit] {
+  background: var(--c);
+  opacity: 1;
+  scale: 1;
+}
+.lunato-chip[data-max] .lunato-chip-dot {
+  animation: lunato-effort-paint 2000ms linear calc(var(--k) * 40ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-chip-dot {
+    transition: none;
+  }
+  .lunato-chip[data-max] .lunato-chip-dot {
+    animation: none;
+  }
+}

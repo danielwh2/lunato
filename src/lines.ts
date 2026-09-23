@@ -21,7 +21,9 @@ const TURNS = [90, -90, 180, 45, -45, 135, -135]; // quarter turns first (arrows
 const COORDS = ["x1", "y1", "x2", "y2"] as const;
 
 // The spring's own stops, so a morph drawn frame by frame keeps pace with the glyphs rolling beside it.
-const STOPS = SPRING.slice(SPRING.indexOf("(") + 1, -1).split(",").map(Number);
+const STOPS = SPRING.slice(SPRING.indexOf("(") + 1, -1)
+  .split(",")
+  .map(Number);
 const ease = (t: number) => {
   const x = t * (STOPS.length - 1);
   const i = Math.min(Math.floor(x), STOPS.length - 2);
@@ -30,24 +32,33 @@ const ease = (t: number) => {
 
 /** An svg with a viewBox whose children are one to three lines. */
 export const isLineIcon = (el: Element) =>
-  el.localName === "svg" && !!el.getAttribute("viewBox") && el.children.length > 0 && el.children.length <= LINES &&
+  el.localName === "svg" &&
+  !!el.getAttribute("viewBox") &&
+  el.children.length > 0 &&
+  el.children.length <= LINES &&
   [...el.children].every((c) => c.localName === "line");
 
 const centre = (svg: Element): Point => {
   const [x, y, w, h] = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(Number);
   return [x + w / 2, y + h / 2];
 };
-const read = (line: Element): Seg => COORDS.map((k) => parseFloat(line.getAttribute(k) ?? "") || 0) as Seg;
-const write = (line: Element, seg: Seg) => COORDS.forEach((k, i) => line.setAttribute(k, String(seg[i])));
+const read = (line: Element): Seg =>
+  COORDS.map((k) => parseFloat(line.getAttribute(k) ?? "") || 0) as Seg;
+const write = (line: Element, seg: Seg) =>
+  COORDS.forEach((k, i) => line.setAttribute(k, String(seg[i])));
 const turn = ([x1, y1, x2, y2]: Seg, deg: number, [cx, cy]: Point): Seg => {
   const r = (deg * Math.PI) / 180;
   const cos = Math.cos(r);
   const sin = Math.sin(r);
-  const at = (x: number, y: number) => [cx + (x - cx) * cos - (y - cy) * sin, cy + (x - cx) * sin + (y - cy) * cos];
+  const at = (x: number, y: number) => [
+    cx + (x - cx) * cos - (y - cy) * sin,
+    cy + (x - cx) * sin + (y - cy) * cos,
+  ];
   return [...at(x1, y1), ...at(x2, y2)] as Seg;
 };
 const flip = ([x1, y1, x2, y2]: Seg): Seg => [x2, y2, x1, y1];
-const gap = (a: Seg, b: Seg) => Math.hypot(a[0] - b[0], a[1] - b[1]) + Math.hypot(a[2] - b[2], a[3] - b[3]);
+const gap = (a: Seg, b: Seg) =>
+  Math.hypot(a[0] - b[0], a[1] - b[1]) + Math.hypot(a[2] - b[2], a[3] - b[3]);
 const near = (a: Seg, b: Seg) => Math.min(gap(a, b), gap(a, flip(b)));
 const point = ([cx, cy]: Point): Seg => [cx, cy, cx, cy];
 const collapsed = (s: Seg, c: Point) => gap(s, point(c)) < EPS;
@@ -65,7 +76,14 @@ export function same(a: Seg[], b: Seg[], c: Point): boolean {
 }
 
 /** The quarter or eighth turn that takes `a` onto `b`, if there is one. */
-export const turnBetween = (a: Seg[], b: Seg[], c: Point) => TURNS.find((deg) => same(a.map((s) => turn(s, deg, c)), b, c));
+export const turnBetween = (a: Seg[], b: Seg[], c: Point) =>
+  TURNS.find((deg) =>
+    same(
+      a.map((s) => turn(s, deg, c)),
+      b,
+      c,
+    ),
+  );
 
 /**
  * Where each of `a`'s three lines should go: the assignment of `b`'s lines, and the direction
@@ -75,8 +93,17 @@ export function assign(a: Seg[], b: Seg[], c: Point): Seg[] {
   const to = [...b, ...Array.from({ length: LINES - b.length }, () => point(c))];
   let best: Seg[] = to;
   let cost = Infinity;
-  for (const order of [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]) {
-    const picked = order.map((k, i) => (gap(a[i], to[k]) <= gap(a[i], flip(to[k])) ? to[k] : flip(to[k])));
+  for (const order of [
+    [0, 1, 2],
+    [0, 2, 1],
+    [1, 0, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [2, 1, 0],
+  ]) {
+    const picked = order.map((k, i) =>
+      gap(a[i], to[k]) <= gap(a[i], flip(to[k])) ? to[k] : flip(to[k]),
+    );
     const total = picked.reduce((sum, s, i) => sum + gap(a[i], s), 0);
     if (total < cost) {
       cost = total;
@@ -89,7 +116,8 @@ export function assign(a: Seg[], b: Seg[], c: Point): Seg[] {
 /** A line collapsed to the centre is hidden, so a padding line never shows as a dot under a round cap. */
 export const hideCollapsed = (svg: Element) => {
   const c = centre(svg);
-  for (const line of svg.children) (line as SVGElement).style.opacity = collapsed(read(line), c) ? "0" : "";
+  for (const line of svg.children)
+    (line as SVGElement).style.opacity = collapsed(read(line), c) ? "0" : "";
 };
 
 const tweens = new WeakMap<Element, () => void>();
@@ -104,14 +132,21 @@ function settle(face: Element) {
 
 /** Make `face` exactly `next`: its attributes and its shapes. Stroke and class changes land here, at the end. */
 function become(face: Element, next: Element) {
-  for (const { name } of [...face.attributes]) if (name !== "style" && !next.hasAttribute(name)) face.removeAttribute(name);
-  for (const { name, value } of next.attributes) if (name !== "id" && name !== "style") face.setAttribute(name, value);
+  for (const { name } of [...face.attributes])
+    if (name !== "style" && !next.hasAttribute(name)) face.removeAttribute(name);
+  for (const { name, value } of next.attributes)
+    if (name !== "id" && name !== "style") face.setAttribute(name, value);
   face.replaceChildren(...[...next.children].map((c) => c.cloneNode(true)));
   if (isLineIcon(face)) hideCollapsed(face);
 }
 
 /** Run `draw(eased progress)` each frame for one roll after `delay`, then `done`. Stoppable where it stands. */
-function tween(face: Element, delay: number, draw: (e: number, t: number) => void, done: () => void) {
+function tween(
+  face: Element,
+  delay: number,
+  draw: (e: number, t: number) => void,
+  done: () => void,
+) {
   const begin = performance.now() + delay;
   let frame = 0;
   const tick = (now: number) => {
@@ -136,7 +171,12 @@ function tween(face: Element, delay: number, draw: (e: number, t: number) => voi
  * shrink into the centre or grow out of it. `delay` null means at once. False when either isn't a line icon.
  */
 export function morphLines(face: Element, next: Element, delay: number | null): boolean {
-  if (!isLineIcon(face) || !isLineIcon(next) || face.getAttribute("viewBox") !== next.getAttribute("viewBox")) return false;
+  if (
+    !isLineIcon(face) ||
+    !isLineIcon(next) ||
+    face.getAttribute("viewBox") !== next.getAttribute("viewBox")
+  )
+    return false;
   settle(face);
   const c = centre(face);
   const from = [...face.children].map(read);
@@ -149,11 +189,19 @@ export function morphLines(face: Element, next: Element, delay: number | null): 
   const deg = turnBetween(from, to, c);
   if (deg !== undefined) {
     // The svg box turns, never the lines inside it: a composited transform stays smooth where per-line ones jitter.
-    const spin = face.animate([{ rotate: "0deg" }, { rotate: `${deg}deg` }], { duration: ROLL_MS, delay, easing: SPRING, fill: "forwards" });
-    spin.finished.then(() => {
-      spin.cancel();
-      become(face, next);
-    }, () => {}); // cancelled: the next morph has already folded the turn in
+    const spin = face.animate([{ rotate: "0deg" }, { rotate: `${deg}deg` }], {
+      duration: ROLL_MS,
+      delay,
+      easing: SPRING,
+      fill: "forwards",
+    });
+    spin.finished.then(
+      () => {
+        spin.cancel();
+        become(face, next);
+      },
+      () => {},
+    ); // cancelled: the next morph has already folded the turn in
     return true;
   }
 
@@ -169,10 +217,18 @@ export function morphLines(face: Element, next: Element, delay: number | null): 
   const target = assign(start, to, c);
   const shownFrom = lines.map((l) => (l.style.opacity === "" ? 1 : parseFloat(l.style.opacity)));
   const shownTo = target.map((s) => (collapsed(s, c) ? 0 : 1));
-  tween(face, delay, (e) => lines.forEach((line, i) => {
-    write(line, start[i].map((v, k) => v + (target[i][k] - v) * e) as Seg);
-    line.style.opacity = String(Math.min(1, Math.max(0, shownFrom[i] + (shownTo[i] - shownFrom[i]) * e)));
-  }), () => become(face, next));
+  tween(
+    face,
+    delay,
+    (e) =>
+      lines.forEach((line, i) => {
+        write(line, start[i].map((v, k) => v + (target[i][k] - v) * e) as Seg);
+        line.style.opacity = String(
+          Math.min(1, Math.max(0, shownFrom[i] + (shownTo[i] - shownFrom[i]) * e)),
+        );
+      }),
+    () => become(face, next),
+  );
   return true;
 }
 
@@ -183,7 +239,24 @@ const SHAPES = new Set(["path", "rect", "circle", "ellipse", "line", "polyline",
 const CLOSED = new Set(["rect", "circle", "ellipse", "polygon"]);
 const MAX_SHAPES = 4; // more parts than this (a spinner's eight spokes) and the icon swaps instead of morphing
 const SAMPLES = 64; // points along each outline: enough that a rounded corner stays round mid-morph
-const GEOMETRY = new Set(["d", "x", "y", "width", "height", "rx", "ry", "cx", "cy", "r", "x1", "y1", "x2", "y2", "points", "pathLength"]);
+const GEOMETRY = new Set([
+  "d",
+  "x",
+  "y",
+  "width",
+  "height",
+  "rx",
+  "ry",
+  "cx",
+  "cy",
+  "r",
+  "x1",
+  "y1",
+  "x2",
+  "y2",
+  "points",
+  "pathLength",
+]);
 const SVG = "http://www.w3.org/2000/svg";
 
 /** One outline, as SAMPLES + 1 points; a closed one ends where it starts. */
@@ -191,15 +264,26 @@ export type Outline = { points: Point[]; closed: boolean };
 
 /** An svg with a viewBox made of one to four simple shapes, each a single stroke: no compound paths with holes. */
 export const isShapeIcon = (el: Element) =>
-  el.localName === "svg" && !!el.getAttribute("viewBox") && el.children.length > 0 && el.children.length <= MAX_SHAPES &&
-  [...el.children].every((c) => SHAPES.has(c.localName) && (c.localName !== "path" || (c.getAttribute("d")?.match(/m/gi) ?? []).length === 1));
+  el.localName === "svg" &&
+  !!el.getAttribute("viewBox") &&
+  el.children.length > 0 &&
+  el.children.length <= MAX_SHAPES &&
+  [...el.children].every(
+    (c) =>
+      SHAPES.has(c.localName) &&
+      (c.localName !== "path" || (c.getAttribute("d")?.match(/m/gi) ?? []).length === 1),
+  );
 
 /** Any icon this module can morph. */
 export const isMorphable = (el: Element) => isLineIcon(el) || isShapeIcon(el);
 
 const outline = (shape: Element): Outline | null => {
   const geometry = shape as SVGGeometryElement;
-  if (typeof geometry.getTotalLength !== "function" || typeof geometry.getPointAtLength !== "function") return null;
+  if (
+    typeof geometry.getTotalLength !== "function" ||
+    typeof geometry.getPointAtLength !== "function"
+  )
+    return null;
   const length = geometry.getTotalLength();
   const closed = CLOSED.has(shape.localName) || /z\s*$/i.test(shape.getAttribute("d") ?? "");
   const points: Point[] = [];
@@ -211,10 +295,17 @@ const outline = (shape: Element): Outline | null => {
 };
 const centroid = ({ points }: Outline): Point => {
   const ring = points.slice(0, SAMPLES);
-  return [ring.reduce((s, p) => s + p[0], 0) / ring.length, ring.reduce((s, p) => s + p[1], 0) / ring.length];
+  return [
+    ring.reduce((s, p) => s + p[0], 0) / ring.length,
+    ring.reduce((s, p) => s + p[1], 0) / ring.length,
+  ];
 };
-const dot = (at: Point, closed: boolean): Outline => ({ points: Array.from({ length: SAMPLES + 1 }, () => [...at] as Point), closed });
-const distance = (a: Point[], b: Point[]) => a.reduce((s, p, i) => s + Math.hypot(p[0] - b[i][0], p[1] - b[i][1]), 0);
+const dot = (at: Point, closed: boolean): Outline => ({
+  points: Array.from({ length: SAMPLES + 1 }, () => [...at] as Point),
+  closed,
+});
+const distance = (a: Point[], b: Point[]) =>
+  a.reduce((s, p, i) => s + Math.hypot(p[0] - b[i][0], p[1] - b[i][1]), 0);
 
 /**
  * `b`'s points reordered to travel least from `a`'s: run backwards if that is shorter, and for two
@@ -222,7 +313,8 @@ const distance = (a: Point[], b: Point[]) => a.reduce((s, p, i) => s + Math.hypo
  */
 export function align(a: Outline, b: Outline): Point[] {
   const ways = [b.points, [...b.points].reverse()];
-  if (!(a.closed && b.closed)) return ways.reduce((best, w) => (distance(a.points, w) < distance(a.points, best) ? w : best));
+  if (!(a.closed && b.closed))
+    return ways.reduce((best, w) => (distance(a.points, w) < distance(a.points, best) ? w : best));
   let best = b.points;
   let cost = Infinity;
   for (const way of ways) {
@@ -241,14 +333,36 @@ export function align(a: Outline, b: Outline): Point[] {
 }
 
 /** Pairs of shapes, by where they sit. A shape with no partner grows out of, or shrinks into, its own centre. */
-export function partner(a: Outline[], b: Outline[]): { from: Outline; to: Outline; shownFrom: number; shownTo: number; source: number; arrival: number }[] {
+export function partner(
+  a: Outline[],
+  b: Outline[],
+): {
+  from: Outline;
+  to: Outline;
+  shownFrom: number;
+  shownTo: number;
+  source: number;
+  arrival: number;
+}[] {
   const n = Math.max(a.length, b.length);
-  const orders = (k: number[]): number[][] => (k.length <= 1 ? [k] : k.flatMap((x, i) => orders([...k.slice(0, i), ...k.slice(i + 1)]).map((rest) => [x, ...rest])));
+  const orders = (k: number[]): number[][] =>
+    k.length <= 1
+      ? [k]
+      : k.flatMap((x, i) =>
+          orders([...k.slice(0, i), ...k.slice(i + 1)]).map((rest) => [x, ...rest]),
+        );
   const indices = Array.from({ length: n }, (_, i) => i);
   let best = indices;
   let cost = Infinity;
   for (const order of orders(indices)) {
-    const c = order.reduce((s, j, i) => (a[i] && b[j] ? s + Math.hypot(centroid(a[i])[0] - centroid(b[j])[0], centroid(a[i])[1] - centroid(b[j])[1]) : s), 0);
+    const c = order.reduce(
+      (s, j, i) =>
+        a[i] && b[j]
+          ? s +
+            Math.hypot(centroid(a[i])[0] - centroid(b[j])[0], centroid(a[i])[1] - centroid(b[j])[1])
+          : s,
+      0,
+    );
     if (c < cost) {
       cost = c;
       best = order;
@@ -261,11 +375,17 @@ export function partner(a: Outline[], b: Outline[]): { from: Outline; to: Outlin
   });
 }
 
-const trace = (points: Point[]) => "M" + points.map(([x, y]) => `${+x.toFixed(3)} ${+y.toFixed(3)}`).join("L");
+const trace = (points: Point[]) =>
+  "M" + points.map(([x, y]) => `${+x.toFixed(3)} ${+y.toFixed(3)}`).join("L");
 
 /** Morph the drawn outline icon `face` into `next`. False when either can't morph this way, or the browser can't measure paths. */
 export function morphShapes(face: Element, next: Element, delay: number | null): boolean {
-  if (!isShapeIcon(face) || !isShapeIcon(next) || face.getAttribute("viewBox") !== next.getAttribute("viewBox")) return false;
+  if (
+    !isShapeIcon(face) ||
+    !isShapeIcon(next) ||
+    face.getAttribute("viewBox") !== next.getAttribute("viewBox")
+  )
+    return false;
   settle(face);
   if (delay === null || face.innerHTML === next.innerHTML) {
     become(face, next);
@@ -281,19 +401,33 @@ export function morphShapes(face: Element, next: Element, delay: number | null):
   const trips = pairs.map(({ from: a, to: b, shownFrom, shownTo, source, arrival }) => {
     const path = document.createElementNS(SVG, "path");
     const dress = shownFrom ? sources[source] : arrivals[arrival];
-    for (const { name, value } of dress.attributes) if (!GEOMETRY.has(name)) path.setAttribute(name, value);
+    for (const { name, value } of dress.attributes)
+      if (!GEOMETRY.has(name)) path.setAttribute(name, value);
     return { path, start: a.points, end: align(a, b), shownFrom, shownTo };
   });
   face.replaceChildren(...trips.map((t) => t.path));
-  tween(face, delay, (e) => {
-    for (const { path, start, end, shownFrom, shownTo } of trips) {
-      path.setAttribute("d", trace(start.map(([x, y], k) => [x + (end[k][0] - x) * e, y + (end[k][1] - y) * e] as Point)));
-      path.style.opacity = String(Math.min(1, Math.max(0, shownFrom + (shownTo - shownFrom) * e)));
-    }
-  }, () => become(face, next));
+  tween(
+    face,
+    delay,
+    (e) => {
+      for (const { path, start, end, shownFrom, shownTo } of trips) {
+        path.setAttribute(
+          "d",
+          trace(
+            start.map(([x, y], k) => [x + (end[k][0] - x) * e, y + (end[k][1] - y) * e] as Point),
+          ),
+        );
+        path.style.opacity = String(
+          Math.min(1, Math.max(0, shownFrom + (shownTo - shownFrom) * e)),
+        );
+      }
+    },
+    () => become(face, next),
+  );
   return true;
 }
 
 /** Morph one icon into another by whichever way fits: lines turn or slide, outlines reshape. */
 export const morphIcon = (face: Element, next: Element, delay: number | null) =>
-  (isLineIcon(face) && isLineIcon(next) ? morphLines(face, next, delay) : false) || morphShapes(face, next, delay);
+  (isLineIcon(face) && isLineIcon(next) ? morphLines(face, next, delay) : false) ||
+  morphShapes(face, next, delay);

@@ -1,0 +1,81 @@
+/* The hover rule comes before the dragging rule, so the held size wins while a drag is also a hover. Each part's --i
+   is its place along the track (the word last), so the rainbow runs along the track into the word. */
+.lunato-slider-fill {
+  --i: 0;
+  width: calc(var(--pos) * 100%);
+  background: var(--c);
+  transition:
+    width 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-slider-stop {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: oklch(0.87 0 0);
+  transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-slider-stop[data-on] {
+  background: var(--c);
+}
+.lunato-slider-knob {
+  --i: calc(var(--n) - 1);
+  position: absolute;
+  top: 50%;
+  left: calc(var(--pos) * 100%);
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid rgb(0 0 0 / 0.12);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  transition:
+    left 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    scale 120ms cubic-bezier(0.2, 0, 0, 1),
+    border-width 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lunato-slider-track:hover .lunato-slider-knob {
+    scale: 1.15;
+  }
+}
+.lunato-slider[data-dragging] :is(.lunato-slider-fill, .lunato-slider-knob) {
+  transition-property: background-color, scale, border-width;
+}
+.lunato-slider[data-dragging] .lunato-slider-knob {
+  scale: 1.25;
+}
+.lunato-slider .lunato-effort-word {
+  --i: var(--n);
+}
+.lunato-slider[data-max] :is(.lunato-slider-fill, .lunato-slider-stop[data-on]) {
+  animation: lunato-effort-paint 2000ms linear calc(var(--i) * 90ms);
+}
+.lunato-slider[data-max] .lunato-slider-knob {
+  border-width: 2px;
+  border-color: var(--c);
+  animation: lunato-effort-ring 2000ms linear calc(var(--i) * 90ms);
+}
+.lunato-slider[data-max] .lunato-effort-word {
+  animation: lunato-effort-ink 2000ms linear calc(var(--i) * 90ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-slider-fill,
+  .lunato-slider-knob {
+    transition-property: background-color, border-width;
+  }
+  .lunato-slider[data-max]
+    :is(
+      .lunato-effort-word,
+      .lunato-slider-fill,
+      .lunato-slider-stop[data-on],
+      .lunato-slider-knob
+    ) {
+    animation: none;
+  }
+}

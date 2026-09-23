@@ -141,7 +141,7 @@ Unchanged words hold still, however many edits sit between them.
 
 The vault on lunato's site has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, streaming text and token meters. They are React 19 and Tailwind v4, to copy into your project and change as you like.
 
-Their styles and motion come with lunato, in one stylesheet, `lunato/vault.css`, which each component imports itself. Install lunato and there is nothing else to set up.
+They live in this repo under `vault/`, one file each with its sheet beside it. Their styles and motion come with lunato, in one stylesheet, `lunato/vault.css`, which each component imports itself. Install lunato and there is nothing else to set up.
 
 Each component has three buttons. One copies the file as it is. One copies a [shadcn](https://ui.shadcn.com/docs/registry) command that installs it and any vault files it imports into `components/lunato/`, and adds lunato to your dependencies:
 

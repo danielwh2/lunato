@@ -24,7 +24,10 @@ export function pair(a: Piece[], b: Piece[]): Pair[] {
   const pairs: Pair[] = [];
   let i = 0;
   let j = 0;
-  for (const [x, y] of common(wa.map((w) => w.key), wb.map((w) => w.key))) {
+  for (const [x, y] of common(
+    wa.map((w) => w.key),
+    wb.map((w) => w.key),
+  )) {
     pairs.push(...letters(a, b, i, wa[x].from, j, wb[y].from));
     for (let k = 0; k < wa[x].length; k++) pairs.push([wa[x].from + k, wb[y].from + k]);
     i = wa[x].from + wa[x].length;
@@ -54,7 +57,9 @@ function words(p: Piece[]) {
 function common(a: string[], b: string[]): Pair[] {
   const table = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
   for (let i = a.length - 1; i >= 0; i--)
-    for (let j = b.length - 1; j >= 0; j--) table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+    for (let j = b.length - 1; j >= 0; j--)
+      table[i][j] =
+        a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
   const out: Pair[] = [];
   for (let i = 0, j = 0; i < a.length && j < b.length; ) {
     if (a[i] === b[j]) out.push([i++, j++]);
@@ -84,18 +89,28 @@ function letters(a: Piece[], b: Piece[], i0: number, i1: number, j0: number, j1:
  */
 function numbers(p: Piece[]) {
   const text = p.map((x) => (x.key === "#" ? "0" : x.text.length === 1 ? x.text : "x")).join("");
-  return [...text.matchAll(/\d(?:[\d,]*\d)?(?:\.(\d+))?/g)].map((m) => ({ end: m.index! + m[0].length, decimals: m[1]?.length ?? 0 }));
+  return [...text.matchAll(/\d(?:[\d,]*\d)?(?:\.(\d+))?/g)].map((m) => ({
+    end: m.index! + m[0].length,
+    decimals: m[1]?.length ?? 0,
+  }));
 }
 
 /** The pieces with placeholders after any number that has fewer decimals than its counterpart, the k-th number in the other text. */
-function pad(p: Piece[], mine: ReturnType<typeof numbers>, theirs: ReturnType<typeof numbers>): Slot[] {
+function pad(
+  p: Piece[],
+  mine: ReturnType<typeof numbers>,
+  theirs: ReturnType<typeof numbers>,
+): Slot[] {
   const after = new Map<number, Slot[]>();
   if (mine.length === theirs.length) {
     mine.forEach((n, k) => {
       const missing = theirs[k].decimals - n.decimals;
       if (missing <= 0) return;
       const point: Slot[] = n.decimals ? [] : [{ key: ".", text: "", from: -1 }];
-      after.set(n.end, [...point, ...Array.from({ length: missing }, (): Slot => ({ key: "#", text: "", from: -1 }))]);
+      after.set(n.end, [
+        ...point,
+        ...Array.from({ length: missing }, (): Slot => ({ key: "#", text: "", from: -1 })),
+      ]);
     });
   }
   const out: Slot[] = [];
@@ -117,8 +132,14 @@ function match(a: Piece[], b: Piece[]): Pair[] {
   for (let i = start; i < n - end; i++) {
     for (let j = start; j < m - end; j++) {
       let length = 0;
-      while (i + length < n - end && j + length < m - end && a[i + length].key === b[j + length].key) length++;
-      if (length >= MIN_RUN && length > run.length && Math.abs(j - i) <= length + SLACK) run = { length, i, j };
+      while (
+        i + length < n - end &&
+        j + length < m - end &&
+        a[i + length].key === b[j + length].key
+      )
+        length++;
+      if (length >= MIN_RUN && length > run.length && Math.abs(j - i) <= length + SLACK)
+        run = { length, i, j };
     }
   }
 

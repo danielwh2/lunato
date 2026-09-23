@@ -1,7 +1,23 @@
 import { pair } from "./diff.js";
 import { hideCollapsed, isLineIcon, morphIcon } from "./lines.js";
 import { collect, trendOf, type Unit } from "./units.js";
-import { BLUR, EDGE, ENTER_FROM, EXIT_CLEAR, FEATHER, FIT_GROW, ICON_BLUR, ICON_SHRINK, LANDED, ROLL_MS, ROOM, SETTLE, SPREAD, SPRING, TRAVEL } from "./tokens.js";
+import {
+  BLUR,
+  EDGE,
+  ENTER_FROM,
+  EXIT_CLEAR,
+  FEATHER,
+  FIT_GROW,
+  ICON_BLUR,
+  ICON_SHRINK,
+  LANDED,
+  ROLL_MS,
+  ROOM,
+  SETTLE,
+  SPREAD,
+  SPRING,
+  TRAVEL,
+} from "./tokens.js";
 
 const bound = new WeakMap<HTMLElement, () => void>();
 
@@ -27,7 +43,9 @@ const KEYS = ["opacity", "translate", "scale", "rotate", "filter"] as const;
  */
 export function morphChanges(target: string | Element | null): () => void {
   if (target === null) return () => {};
-  const host = (typeof target === "string" ? document.querySelector(target) : target) as HTMLElement | null;
+  const host = (
+    typeof target === "string" ? document.querySelector(target) : target
+  ) as HTMLElement | null;
   if (!host) throw new Error(`lunato: nothing matches "${target}"`);
   bound.get(host)?.(); // binding again replaces the old binding, so StrictMode and HMR are safe
 
@@ -37,10 +55,12 @@ export function morphChanges(target: string | Element | null): () => void {
   overlay.setAttribute("aria-hidden", "true");
   // The host hides its own glyphs with a transparent fill; the overlay puts the fill back for the copies it draws.
   // It is also the window motion is seen through: nothing it draws ever paints outside the element. `clip` where supported, `hidden` before that.
-  overlay.style.cssText = "position:absolute;left:0;right:0;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-text-fill-color:currentcolor;overflow:hidden;overflow:clip";
+  overlay.style.cssText =
+    "position:absolute;left:0;right:0;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-text-fill-color:currentcolor;overflow:hidden;overflow:clip";
   let overlayTop = 0; // where the window starts, relative to the element's padding box
 
-  const reduced = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : undefined;
+  const reduced =
+    typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : undefined;
   const calm = () => !!reduced?.matches;
 
   let live: Live[] = [];
@@ -63,7 +83,9 @@ export function morphChanges(target: string | Element | null): () => void {
     box.style.cssText = `position:absolute;display:block;white-space:pre;left:${left - origin.x}px;top:${top - origin.y}px;width:${width}px;height:${height}px;line-height:${height}px`;
   };
   const face = (unit: Unit) => {
-    const el = (unit.node ? unit.node.cloneNode(true) : document.createElement("span")) as HTMLElement;
+    const el = (
+      unit.node ? unit.node.cloneNode(true) : document.createElement("span")
+    ) as HTMLElement;
     if (unit.node) {
       el.removeAttribute("id");
       el.style.visibility = ""; // the original is hidden while its copy draws
@@ -83,7 +105,14 @@ export function morphChanges(target: string | Element | null): () => void {
     return { ...unit, box, face: f };
   };
 
-  const run = (el: Element, frames: Keyframe[], duration: number, delay: number, easing: string, fill: FillMode) => {
+  const run = (
+    el: Element,
+    frames: Keyframe[],
+    duration: number,
+    delay: number,
+    easing: string,
+    fill: FillMode,
+  ) => {
     const a = el.animate(frames, { duration, delay, easing, fill });
     void a.finished.catch(() => {}); // cancelled by a later change: nothing to report
     return a;
@@ -98,17 +127,31 @@ export function morphChanges(target: string | Element | null): () => void {
    * at the glyph boxes, so there it is clipped away entirely: an arriving glyph starts unseen and slides in whole.
    */
   const gone = (unit: Unit, dir: number, still: boolean): Keyframe =>
-    still ? { opacity: 0 }
-    : unit.kind === "icon" ? { opacity: 0, translate: "0 0", scale: ICON_SHRINK, rotate: "0deg", filter: ICON_BLUR }
-    : { opacity: 0, translate: `0 ${+(dir * TRAVEL * unit.rect.height).toFixed(2)}px`, scale: 1, rotate: "0deg", filter: `blur(${BLUR}em)` };
+    still
+      ? { opacity: 0 }
+      : unit.kind === "icon"
+        ? { opacity: 0, translate: "0 0", scale: ICON_SHRINK, rotate: "0deg", filter: ICON_BLUR }
+        : {
+            opacity: 0,
+            translate: `0 ${+(dir * TRAVEL * unit.rect.height).toFixed(2)}px`,
+            scale: 1,
+            rotate: "0deg",
+            filter: `blur(${BLUR}em)`,
+          };
   const shown = (still: boolean): Keyframe =>
-    still ? { opacity: 1 } : { opacity: 1, translate: "0 0", scale: 1, rotate: "0deg", filter: "blur(0)" };
+    still
+      ? { opacity: 1 }
+      : { opacity: 1, translate: "0 0", scale: 1, rotate: "0deg", filter: "blur(0)" };
   // A glyph leaves faster than its replacement arrives: it fades out in the first part of its travel, so it is gone
   // before anything glides or rolls into its place, and the new one fades in only once it is on its way.
   const exit = (from: Keyframe, unit: Unit, dir: number, still: boolean): Keyframe[] =>
-    still || unit.kind === "icon" ? [from, gone(unit, dir, still)] : [from, { opacity: 0, offset: EXIT_CLEAR }, gone(unit, dir, still)];
+    still || unit.kind === "icon"
+      ? [from, gone(unit, dir, still)]
+      : [from, { opacity: 0, offset: EXIT_CLEAR }, gone(unit, dir, still)];
   const enter = (unit: Unit, dir: number, still: boolean): Keyframe[] =>
-    still || unit.kind === "icon" ? [gone(unit, dir, still), shown(still)] : [gone(unit, dir, still), { opacity: 0, offset: ENTER_FROM }, shown(still)];
+    still || unit.kind === "icon"
+      ? [gone(unit, dir, still), shown(still)]
+      : [gone(unit, dir, still), { opacity: 0, offset: ENTER_FROM }, shown(still)];
   /** Delay by position, spread over a share of the roll, so the change sweeps left to right, a word at a time. */
   const sweep = (xs: number[]) => {
     const lo = Math.min(...xs);
@@ -140,7 +183,17 @@ export function morphChanges(target: string | Element | null): () => void {
     const local = (r: DOMRect): DOMRect => {
       const left = (r.left - frame.left) / sx - host.clientLeft;
       const top = (r.top - frame.top) / sy - host.clientTop;
-      return { left, top, width: r.width / sx, height: r.height / sy, right: left + r.width / sx, bottom: top + r.height / sy, x: left, y: top, toJSON() {} } as DOMRect;
+      return {
+        left,
+        top,
+        width: r.width / sx,
+        height: r.height / sy,
+        right: left + r.width / sx,
+        bottom: top + r.height / sy,
+        x: left,
+        y: top,
+        toJSON() {},
+      } as DOMRect;
     };
     const inner = { left: 0, top: 0, width: host.clientWidth, height: host.clientHeight };
     const next = collect(host, overlay).map((u) => ({ ...u, rect: local(u.rect) }));
@@ -158,13 +211,17 @@ export function morphChanges(target: string | Element | null): () => void {
     const bottom = Math.max(inner.height, ...rects.map((r) => r.bottom - inner.top));
     // Icons fill their box, so where one reaches an edge the fade gives way rather than dim it at rest.
     const icons = next.filter((u) => u.kind === "icon").map((u) => u.rect);
-    const room = (px: number, cap: number) => +(next.length ? Math.max(0, Math.min(cap, px)) : cap).toFixed(2); // rounded: float noise like 4.199999999999999px lands in the style
+    const room = (px: number, cap: number) =>
+      +(next.length ? Math.max(0, Math.min(cap, px)) : cap).toFixed(2); // rounded: float noise like 4.199999999999999px lands in the style
     const edge = (gap: number) => +Math.max(0, Math.min(size * EDGE, gap)).toFixed(2);
     const fade = {
       top: edge(Math.min(Infinity, ...icons.map((r) => r.top - inner.top - top))),
       bottom: edge(Math.min(Infinity, ...icons.map((r) => inner.top + bottom - r.bottom))),
       left: room(Math.min(...next.map((u) => u.rect.left)) - inner.left, size * FEATHER),
-      right: room(inner.left + inner.width - Math.max(...next.map((u) => u.rect.right)), size * FEATHER),
+      right: room(
+        inner.left + inner.width - Math.max(...next.map((u) => u.rect.right)),
+        size * FEATHER,
+      ),
     };
     const origin = { x: inner.left, y: inner.top + top };
     // One line only: a box pinned mid-fit must not re-wrap its text, and a wrapped element has no single width to ease.
@@ -179,23 +236,45 @@ export function morphChanges(target: string | Element | null): () => void {
     const kept = new Map(pairs.map(([o, n]) => [n, o]));
     const leaving = live.map((_, o) => o).filter((o) => !pairs.some(([p]) => p === o));
     // A kept digit slot whose value changed rolls in place: its old face leaves as the new one arrives.
-    const rolling = pairs.filter(([o, n]) => live[o].text !== next[n].text || (next[n].key === "~icon" && live[o].node !== next[n].node));
+    const rolling = pairs.filter(
+      ([o, n]) =>
+        live[o].text !== next[n].text || (next[n].key === "~icon" && live[o].node !== next[n].node),
+    );
     const entering = next.map((_, n) => n).filter((n) => !kept.has(n));
     // Changes sweep left to right by word: every glyph in a word starts together, so the word rises straight, as one
     // piece. Staggered by letter, its leading edge would climb at a slant, which reads as dragged in at an angle.
     const wordStart = (units: { word: number }[], left: (i: number) => number) => {
       const starts = new Map<number, number>();
-      units.forEach((u, i) => starts.set(u.word, Math.min(starts.get(u.word) ?? Infinity, left(i))));
+      units.forEach((u, i) =>
+        starts.set(u.word, Math.min(starts.get(u.word) ?? Infinity, left(i))),
+      );
       return (i: number) => starts.get(units[i].word)!;
     };
     const oldAt = wordStart(live, (o) => was[o].left);
     const newAt = wordStart(next, (n) => next[n].rect.left);
-    const changeAt = sweep([...new Set([...leaving.map(oldAt), ...entering.map(newAt), ...rolling.map(([, n]) => newAt(n))])]);
+    const changeAt = sweep([
+      ...new Set([
+        ...leaving.map(oldAt),
+        ...entering.map(newAt),
+        ...rolling.map(([, n]) => newAt(n)),
+      ]),
+    ]);
     const exitAt = (o: number) => changeAt(oldAt(o));
     const enterAt = (n: number) => changeAt(newAt(n));
-    const tail = still ? 0 : Math.max(0, ...leaving.map(exitAt), ...entering.map(enterAt), ...rolling.map(([, n]) => enterAt(n)));
+    const tail = still
+      ? 0
+      : Math.max(
+          0,
+          ...leaving.map(exitAt),
+          ...entering.map(enterAt),
+          ...rolling.map(([, n]) => enterAt(n)),
+        );
     // How far each kept glyph has to go. Half a line or more down or up is a new line.
-    const shifts = pairs.map(([o, n]) => ({ n, dx: was[o].left - next[n].rect.left, dy: was[o].top - next[n].rect.top }));
+    const shifts = pairs.map(([o, n]) => ({
+      n,
+      dx: was[o].left - next[n].rect.left,
+      dy: was[o].top - next[n].rect.top,
+    }));
     const newLine = (s: { n: number; dy: number }) => Math.abs(s.dy) >= next[s.n].rect.height / 2;
     const gliding = !still && shifts.some((s) => !newLine(s) && Math.hypot(s.dx, s.dy) >= 0.5);
     // When words move, one thing at a time: what leaves goes first, what stays glides into the room it left, and what
@@ -207,7 +286,10 @@ export function morphChanges(target: string | Element | null): () => void {
 
     // Ghosts still fading keep their place on screen while the window moves.
     const moved = overlayTop - top;
-    if (moved) for (const child of overlay.children) (child as HTMLElement).style.top = `${parseFloat((child as HTMLElement).style.top) + moved}px`;
+    if (moved)
+      for (const child of overlay.children)
+        (child as HTMLElement).style.top =
+          `${parseFloat((child as HTMLElement).style.top) + moved}px`;
     overlayTop = top;
     overlay.style.top = `${top}px`;
     overlay.style.bottom = `${inner.height - bottom}px`;
@@ -229,21 +311,44 @@ export function morphChanges(target: string | Element | null): () => void {
         continue;
       }
       clear(f); // the box keeps any glide it has, and the ghost drifts on while it fades
-      const out = run(f, exit(now[o], live[o], -trend, still), ROLL_MS, still ? 0 : exitAt(o), SPRING, "forwards");
-      out.finished.then(() => box.remove(), () => box.remove());
+      const out = run(
+        f,
+        exit(now[o], live[o], -trend, still),
+        ROLL_MS,
+        still ? 0 : exitAt(o),
+        SPRING,
+        "forwards",
+      );
+      out.finished.then(
+        () => box.remove(),
+        () => box.remove(),
+      );
     }
 
     live = next.map((unit, n) => {
       const o = kept.get(n);
       if (o === undefined) {
         const l = make(unit, origin);
-        if (animate) run(l.face, enter(unit, trend, still), ROLL_MS, still ? 0 : landAt + enterAt(n), SPRING, "backwards");
+        if (animate)
+          run(
+            l.face,
+            enter(unit, trend, still),
+            ROLL_MS,
+            still ? 0 : landAt + enterAt(n),
+            SPRING,
+            "backwards",
+          );
         return l;
       }
       const old = live[o];
       let f = old.face;
       // A morphable icon reshapes into the new one; any other new element is drawn fresh.
-      if (unit.node && unit.node !== old.node && !morphIcon(old.face, unit.node, animate && !still ? enterAt(n) : null)) old.face.replaceWith((f = face(unit)));
+      if (
+        unit.node &&
+        unit.node !== old.node &&
+        !morphIcon(old.face, unit.node, animate && !still ? enterAt(n) : null)
+      )
+        old.face.replaceWith((f = face(unit)));
       if (unit.text !== old.text) {
         // Both faces share the box, stacked, so the old value leaves through one edge as the new one arrives through the other.
         old.box.append((f = face(unit)));
@@ -252,7 +357,17 @@ export function morphChanges(target: string | Element | null): () => void {
           const delay = still ? 0 : enterAt(n);
           const leavingFace = old.face;
           clear(leavingFace);
-          run(leavingFace, exit(now[o], old, -trend, still), ROLL_MS, delay, SPRING, "forwards").finished.then(() => leavingFace.remove(), () => leavingFace.remove());
+          run(
+            leavingFace,
+            exit(now[o], old, -trend, still),
+            ROLL_MS,
+            delay,
+            SPRING,
+            "forwards",
+          ).finished.then(
+            () => leavingFace.remove(),
+            () => leavingFace.remove(),
+          );
           run(f, enter(unit, trend, still), ROLL_MS, delay, SPRING, "backwards");
         }
       }
@@ -264,20 +379,54 @@ export function morphChanges(target: string | Element | null): () => void {
         // fades out where it was, with what leaves, and back in where it lands, with what arrives.
         const ghost = old.box.cloneNode(false) as HTMLElement;
         ghost.append(old.face.cloneNode(true));
-        Object.assign(ghost.style, { left: `${was[o].left - origin.x}px`, top: `${was[o].top - origin.y}px` });
+        Object.assign(ghost.style, {
+          left: `${was[o].left - origin.x}px`,
+          top: `${was[o].top - origin.y}px`,
+        });
         overlay.append(ghost);
-        run(ghost, [{ opacity: 1 }, { opacity: 0 }], ROLL_MS * EXIT_CLEAR, 0, SETTLE, "forwards").finished.then(() => ghost.remove(), () => ghost.remove());
+        run(
+          ghost,
+          [{ opacity: 1 }, { opacity: 0 }],
+          ROLL_MS * EXIT_CLEAR,
+          0,
+          SETTLE,
+          "forwards",
+        ).finished.then(
+          () => ghost.remove(),
+          () => ghost.remove(),
+        );
         clear(old.box);
-        run(old.box, [{ opacity: 0 }, { opacity: 0, offset: ENTER_FROM }, { opacity: 1 }], ROLL_MS, landAt, SETTLE, "backwards");
+        run(
+          old.box,
+          [{ opacity: 0 }, { opacity: 0, offset: ENTER_FROM }, { opacity: 1 }],
+          ROLL_MS,
+          landAt,
+          SETTLE,
+          "backwards",
+        );
       } else if (animate && !still && Math.hypot(dx, dy) >= 0.5) {
         clear(old.box);
-        run(old.box, [{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], ROLL_MS, roomAt, SETTLE, "backwards");
+        run(
+          old.box,
+          [{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }],
+          ROLL_MS,
+          roomAt,
+          SETTLE,
+          "backwards",
+        );
       }
       return { ...unit, box: old.box, face: f };
     });
 
     // An element sized by its content eases to the new width, so what sits beside it slides instead of jumping.
-    if (animate && !still && oneLine && fromWidth && toWidth && Math.abs(toWidth - fromWidth) >= 0.5) {
+    if (
+      animate &&
+      !still &&
+      oneLine &&
+      fromWidth &&
+      toWidth &&
+      Math.abs(toWidth - fromWidth) >= 0.5
+    ) {
       wrap = host.style.whiteSpace;
       host.style.whiteSpace = "nowrap"; // a box narrower than its text mid-fit must not wrap it onto a second line
       // The box never cuts a letter that is still showing. Growing, it reaches its new width ahead of the letters
@@ -285,13 +434,23 @@ export function morphChanges(target: string | Element | null): () => void {
       const growing = toWidth > fromWidth;
       const hold = growing ? 0 : ROLL_MS * EXIT_CLEAR;
       const span = growing ? ROLL_MS * FIT_GROW : Math.max(total - hold, ROLL_MS * FIT_GROW);
-      const fit = (fitting = run(host, [{ width: `${fromWidth}px` }, { width: `${toWidth}px` }], span, hold, SETTLE, "backwards"));
-      fit.finished.then(() => {
-        if (fitting !== fit) return;
-        fitting = undefined;
-        host.style.whiteSpace = wrap;
-        render(false);
-      }, () => {});
+      const fit = (fitting = run(
+        host,
+        [{ width: `${fromWidth}px` }, { width: `${toWidth}px` }],
+        span,
+        hold,
+        SETTLE,
+        "backwards",
+      ));
+      fit.finished.then(
+        () => {
+          if (fitting !== fit) return;
+          fitting = undefined;
+          host.style.whiteSpace = wrap;
+          render(false);
+        },
+        () => {},
+      );
     }
     width = toWidth;
   };
@@ -303,7 +462,9 @@ export function morphChanges(target: string | Element | null): () => void {
   mutations.observe(host, { childList: true, characterData: true, subtree: true });
 
   // Anything that moves the glyphs without changing them: a resize, a wrap, a web font landing.
-  const refit = () => { if (!fitting) render(false); };
+  const refit = () => {
+    if (!fitting) render(false);
+  };
   const resizes = new ResizeObserver(refit);
   resizes.observe(host);
   document.fonts?.addEventListener?.("loadingdone", refit);
@@ -340,7 +501,9 @@ function dress(host: HTMLElement, style: CSSStyleDeclaration) {
   };
   if (["static", ""].includes(style.position)) wear.position = "relative";
   if (style.display === "inline") wear.display = "inline-block";
-  const before = Object.keys(wear).map((name) => [name, host.style.getPropertyValue(name)] as const);
+  const before = Object.keys(wear).map(
+    (name) => [name, host.style.getPropertyValue(name)] as const,
+  );
   for (const name in wear) host.style.setProperty(name, wear[name]);
   return () => before.forEach(([name, value]) => host.style.setProperty(name, value));
 }

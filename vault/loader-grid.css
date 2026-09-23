@@ -1,0 +1,46 @@
+/* Delays are positive and every animation starts and ends at the resting style, so the first frame is already at rest.
+   --k is a dot's place in the pattern and --t its clock's stretch, both from loader-grid.tsx. */
+.lunato-grid-dot {
+  --lunato-cycle: calc(1.6s * var(--t) / var(--lunato-speed, 1));
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0.2;
+  transform: scale(0.7);
+  animation: lunato-grid-pulse var(--lunato-cycle) cubic-bezier(0.37, 0, 0.63, 1)
+    calc(var(--k) * var(--lunato-cycle) / 2) infinite;
+}
+.lunato-grid[data-pattern="random"] .lunato-grid-dot {
+  animation-name: lunato-grid-twinkle;
+  animation-delay: calc(var(--k) * var(--lunato-cycle));
+}
+@keyframes lunato-grid-pulse {
+  0%,
+  45%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.7);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes lunato-grid-twinkle {
+  0%,
+  40%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.7);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-grid-dot {
+    animation: none;
+    opacity: 0.5;
+    transform: none;
+  }
+}

@@ -1,0 +1,13 @@
+.lunato-planet-surface {
+  animation: lunato-planet-turn calc(4s / var(--lunato-speed, 1)) linear infinite;
+}
+@keyframes lunato-planet-turn {
+  to {
+    transform: translateX(-16px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-planet-surface {
+    animation: none;
+  }
+}

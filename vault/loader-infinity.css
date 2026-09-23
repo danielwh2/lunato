@@ -1,0 +1,13 @@
+.lunato-infinity-run {
+  animation: lunato-infinity-run calc(1.6s / var(--lunato-speed, 1)) linear infinite;
+}
+@keyframes lunato-infinity-run {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-infinity-run {
+    animation: none;
+  }
+}

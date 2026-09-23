@@ -1,0 +1,45 @@
+/* The line's marks use thinking-indicator.css. Closed, the reasoning is hidden from reading and tabbing; scrolled
+   back, its top fades over 20px, so a line cut at the edge reads as more above. */
+.lunato-thoughts-chevron {
+  transition: rotate 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-thoughts[data-open] .lunato-thoughts-chevron {
+  rotate: 90deg;
+}
+.lunato-thoughts-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-thoughts[data-open] .lunato-thoughts-fold {
+  grid-template-rows: 1fr;
+}
+.lunato-thoughts-body {
+  opacity: 0;
+  translate: 0 -4px;
+  filter: blur(2px);
+  visibility: hidden;
+  transition:
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1),
+    translate 180ms cubic-bezier(0.2, 0, 0, 1),
+    filter 180ms cubic-bezier(0.2, 0, 0, 1),
+    visibility 0s linear 240ms;
+}
+.lunato-thoughts[data-open] .lunato-thoughts-body {
+  opacity: 1;
+  translate: none;
+  filter: none;
+  visibility: visible;
+  transition-duration: 240ms, 240ms, 240ms, 0s;
+  transition-delay: 40ms, 40ms, 40ms, 0s;
+}
+.lunato-thoughts-body[data-scrolled] {
+  mask-image: linear-gradient(transparent, #000 20px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-thoughts-fold,
+  .lunato-thoughts-body,
+  .lunato-thoughts-chevron {
+    transition: none;
+  }
+}

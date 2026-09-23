@@ -1,0 +1,90 @@
+/* The rise and blur sit on the face's children, inside the row's clip: on the row itself they would spill past the
+   scroll box's edges mid-entrance and flash a scrollbar. The icon and the arc swap in sequence: the outgoing one
+   shrinks away at once, the incoming one waits 140ms. */
+.lunato-file {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-file-row {
+  min-height: 0;
+  overflow: hidden;
+}
+.lunato-file-face {
+  transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-file-face > * {
+  transition:
+    opacity 360ms cubic-bezier(0.2, 0, 0, 1) 80ms,
+    translate 360ms cubic-bezier(0.2, 0, 0, 1) 80ms,
+    filter 360ms cubic-bezier(0.2, 0, 0, 1) 80ms;
+}
+.lunato-file[data-editing] .lunato-file-face {
+  background-color: oklch(0.97 0 0);
+}
+@starting-style {
+  .lunato-file {
+    grid-template-rows: 0fr;
+  }
+  .lunato-file[data-editing] .lunato-file-face {
+    background-color: transparent;
+  }
+  .lunato-file-face > * {
+    opacity: 0;
+    translate: 0 4px;
+    filter: blur(2px);
+  }
+}
+.lunato-file-icon,
+.lunato-file-arc {
+  grid-area: 1 / 1;
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    scale 220ms cubic-bezier(0.2, 0, 0, 1),
+    filter 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-file .lunato-file-arc,
+.lunato-file[data-editing] .lunato-file-icon {
+  opacity: 0;
+  scale: 0.25;
+  filter: blur(4px);
+  transition-delay: 0s;
+}
+.lunato-file .lunato-file-icon,
+.lunato-file[data-editing] .lunato-file-arc {
+  opacity: 1;
+  scale: 1;
+  filter: none;
+  transition-delay: 140ms;
+}
+.lunato-file[data-editing] .lunato-file-arc {
+  color: oklch(0.205 0 0);
+  animation: lunato-file-turn 1s linear infinite;
+}
+@keyframes lunato-file-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-file {
+    transition: none;
+  }
+  .lunato-file-face > * {
+    translate: none;
+    filter: none;
+    transition-property: opacity;
+  }
+  .lunato-file-icon,
+  .lunato-file-arc {
+    transition-property: opacity;
+  }
+  .lunato-file .lunato-file-arc,
+  .lunato-file[data-editing] .lunato-file-icon {
+    scale: 1;
+    filter: none;
+  }
+  .lunato-file[data-editing] .lunato-file-arc {
+    animation: none;
+  }
+}

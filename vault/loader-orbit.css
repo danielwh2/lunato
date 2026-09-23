@@ -1,0 +1,57 @@
+/* Across and down each swing half an orbit on an ease-in-out that stands in for a sine, down a quarter orbit behind,
+   which traces the ellipse. The orbit is wide enough that the shrunken moon clears the planet behind it. */
+.lunato-orbit-x,
+.lunato-orbit-y,
+.lunato-orbit-moon {
+  --lunato-half: calc(0.9s / var(--lunato-speed, 1));
+  animation: var(--lunato-half) cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+}
+.lunato-orbit-x {
+  animation-name: lunato-orbit-x;
+}
+.lunato-orbit-y {
+  animation-name: lunato-orbit-y;
+  animation-delay: calc(var(--lunato-half) / -2);
+}
+.lunato-orbit-moon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: lunato-orbit-depth;
+  animation-delay: calc(var(--lunato-half) / -2);
+}
+@keyframes lunato-orbit-x {
+  from {
+    transform: translateX(-9px);
+  }
+  to {
+    transform: translateX(9px);
+  }
+}
+@keyframes lunato-orbit-y {
+  from {
+    transform: translateY(-4.6px);
+  }
+  to {
+    transform: translateY(4.6px);
+  }
+}
+@keyframes lunato-orbit-depth {
+  from {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-orbit-x,
+  .lunato-orbit-y,
+  .lunato-orbit-moon {
+    animation: none;
+  }
+  .lunato-orbit-y {
+    transform: translateY(4.6px);
+  }
+}

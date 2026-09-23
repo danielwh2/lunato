@@ -24,11 +24,13 @@
   ],
   "sideEffects": [
     "./dist/element.js",
-    "./vault.css"
+    "./vault.css",
+    "./vault/*.css"
   ],
   "files": [
     "dist",
     "vault.css",
+    "vault/*.css",
     "README.md",
     "LICENSE"
   ],
@@ -51,11 +53,13 @@
   "scripts": {
     "prepack": "npm run build",
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "check": "tsc -p tsconfig.json --noEmit && tsc -p vault/tsconfig.json",
+    "test": "vitest run",
+    "doctor": "npx -y react-doctor@latest vault --verbose --no-telemetry --no-supply-chain --yes"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "happy-dom": "^20.10.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

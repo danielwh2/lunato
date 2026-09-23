@@ -1,0 +1,68 @@
+/* A chip taken off stays where it stood, out of the flow, while the chips after it glide into its place and the row
+   eases to its new height; the glide and the ease are measured in attachments.tsx. */
+.lunato-attachments {
+  overflow: hidden;
+}
+.lunato-attachment {
+  transition:
+    opacity 360ms cubic-bezier(0.2, 0, 0, 1),
+    translate 360ms cubic-bezier(0.2, 0, 0, 1),
+    filter 360ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+@starting-style {
+  .lunato-attachment:not([data-leaving]) {
+    opacity: 0;
+    translate: 0 4px;
+    filter: blur(2px);
+  }
+} /* a leaving ghost is new too, but only fades out */
+.lunato-attachment[data-leaving] {
+  pointer-events: none;
+  animation: lunato-attachment-out 180ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+@keyframes lunato-attachment-out {
+  to {
+    opacity: 0;
+    scale: 0.92;
+    filter: blur(2px);
+  }
+}
+.lunato-attachment-mark {
+  transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lunato-attachment[data-uploading] .lunato-attachment-mark {
+  opacity: 0.4;
+}
+.lunato-attachment-arc {
+  opacity: 0;
+  transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1);
+  animation: lunato-attachment-turn 1s linear infinite paused;
+}
+.lunato-attachment[data-uploading] .lunato-attachment-arc {
+  opacity: 1;
+  animation-play-state: running;
+}
+@keyframes lunato-attachment-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes lunato-attachment-fade {
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-attachment {
+    transition:
+      opacity 200ms cubic-bezier(0.2, 0, 0, 1),
+      border-color 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .lunato-attachment[data-leaving] {
+    animation-name: lunato-attachment-fade;
+  }
+  .lunato-attachment-arc {
+    animation: none;
+  }
+}

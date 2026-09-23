@@ -139,7 +139,15 @@ Unchanged words hold still, however many edits sit between them.
 
 ## Components
 
-The vault on lunato's site has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, image generation, streaming text and token meters. They are React 19 and Tailwind v4, one file each, to copy into your project and change as you like.
+The vault on lunato's site has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, image generation, streaming text and token meters. They are React 19 and Tailwind v4, to copy into your project and change as you like.
+
+Each has two buttons. One copies the file as it is. The other copies a [shadcn](https://ui.shadcn.com/docs/registry) command that installs it along with any vault files it imports, into `components/lunato/`, and adds lunato to your dependencies:
+
+```
+npx shadcn@latest add <vault>/r/ai-input.json
+```
+
+Versions of one component share their core props, so switching from `<ModelMenu {...picker} />` to `<ModelTabs {...picker} />` is a rename.
 
 ## Styling
 

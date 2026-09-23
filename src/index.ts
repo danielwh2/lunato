@@ -1,7 +1,7 @@
 import { pair } from "./diff.js";
 import { hideCollapsed, isLineIcon, morphIcon } from "./lines.js";
 import { collect, trendOf, type Unit } from "./units.js";
-import { BLUR, EDGE, ENTER_FROM, EXIT_CLEAR, FEATHER, FIT_GROW, ICON_BLUR, ICON_SHRINK, ROLL_MS, SETTLE, SPREAD, SPRING, TRAVEL } from "./tokens.js";
+import { BLUR, EDGE, ENTER_FROM, EXIT_CLEAR, FEATHER, FIT_GROW, ICON_BLUR, ICON_SHRINK, LANDED, ROLL_MS, ROOM, SETTLE, SPREAD, SPRING, TRAVEL } from "./tokens.js";
 
 const bound = new WeakMap<HTMLElement, () => void>();
 
@@ -109,7 +109,7 @@ export function morphChanges(target: string | Element | null): () => void {
     still || unit.kind === "icon" ? [from, gone(unit, dir, still)] : [from, { opacity: 0, offset: EXIT_CLEAR }, gone(unit, dir, still)];
   const enter = (unit: Unit, dir: number, still: boolean): Keyframe[] =>
     still || unit.kind === "icon" ? [gone(unit, dir, still), shown(still)] : [gone(unit, dir, still), { opacity: 0, offset: ENTER_FROM }, shown(still)];
-  /** Delay by position, spread over a share of the roll, so the change sweeps left to right. */
+  /** Delay by position, spread over a share of the roll, so the change sweeps left to right, a word at a time. */
   const sweep = (xs: number[]) => {
     const lo = Math.min(...xs);
     const reach = Math.max(...xs) - lo || 1;
@@ -181,12 +181,29 @@ export function morphChanges(target: string | Element | null): () => void {
     // A kept digit slot whose value changed rolls in place: its old face leaves as the new one arrives.
     const rolling = pairs.filter(([o, n]) => live[o].text !== next[n].text || (next[n].key === "~icon" && live[o].node !== next[n].node));
     const entering = next.map((_, n) => n).filter((n) => !kept.has(n));
-    // Changes sweep left to right by where they land, so a rolling slot and a new digit beside it keep one rhythm.
-    const changeAt = sweep([...leaving.map((o) => was[o].left), ...entering.map((n) => next[n].rect.left), ...rolling.map(([, n]) => next[n].rect.left)]);
-    const exitAt = changeAt;
-    const enterAt = changeAt;
-    const tail = still ? 0 : Math.max(0, ...leaving.map((o) => exitAt(was[o].left)), ...entering.map((n) => enterAt(next[n].rect.left)), ...rolling.map(([, n]) => changeAt(next[n].rect.left)));
-    const total = ROLL_MS + tail;
+    // Changes sweep left to right by word: every glyph in a word starts together, so the word rises straight, as one
+    // piece. Staggered by letter, its leading edge would climb at a slant, which reads as dragged in at an angle.
+    const wordStart = (units: { word: number }[], left: (i: number) => number) => {
+      const starts = new Map<number, number>();
+      units.forEach((u, i) => starts.set(u.word, Math.min(starts.get(u.word) ?? Infinity, left(i))));
+      return (i: number) => starts.get(units[i].word)!;
+    };
+    const oldAt = wordStart(live, (o) => was[o].left);
+    const newAt = wordStart(next, (n) => next[n].rect.left);
+    const changeAt = sweep([...new Set([...leaving.map(oldAt), ...entering.map(newAt), ...rolling.map(([, n]) => newAt(n))])]);
+    const exitAt = (o: number) => changeAt(oldAt(o));
+    const enterAt = (n: number) => changeAt(newAt(n));
+    const tail = still ? 0 : Math.max(0, ...leaving.map(exitAt), ...entering.map(enterAt), ...rolling.map(([, n]) => enterAt(n)));
+    // How far each kept glyph has to go. Half a line or more down or up is a new line.
+    const shifts = pairs.map(([o, n]) => ({ n, dx: was[o].left - next[n].rect.left, dy: was[o].top - next[n].rect.top }));
+    const newLine = (s: { n: number; dy: number }) => Math.abs(s.dy) >= next[s.n].rect.height / 2;
+    const gliding = !still && shifts.some((s) => !newLine(s) && Math.hypot(s.dx, s.dy) >= 0.5);
+    // When words move, one thing at a time: what leaves goes first, what stays glides into the room it left, and what
+    // arrives drops in once the glides have all but landed, so nothing ever passes through anything else. With nothing
+    // gliding (a digit rolling, a word added at the end) all of it moves at once.
+    const roomAt = gliding && (leaving.length || shifts.some(newLine)) ? ROLL_MS * ROOM : 0;
+    const landAt = gliding ? roomAt + ROLL_MS * LANDED : 0;
+    const total = landAt + ROLL_MS + tail;
 
     // Ghosts still fading keep their place on screen while the window moves.
     const moved = overlayTop - top;
@@ -212,7 +229,7 @@ export function morphChanges(target: string | Element | null): () => void {
         continue;
       }
       clear(f); // the box keeps any glide it has, and the ghost drifts on while it fades
-      const out = run(f, exit(now[o], live[o], -trend, still), ROLL_MS, still ? 0 : exitAt(was[o].left), SPRING, "forwards");
+      const out = run(f, exit(now[o], live[o], -trend, still), ROLL_MS, still ? 0 : exitAt(o), SPRING, "forwards");
       out.finished.then(() => box.remove(), () => box.remove());
     }
 
@@ -220,19 +237,19 @@ export function morphChanges(target: string | Element | null): () => void {
       const o = kept.get(n);
       if (o === undefined) {
         const l = make(unit, origin);
-        if (animate) run(l.face, enter(unit, trend, still), ROLL_MS, still ? 0 : enterAt(unit.rect.left), SPRING, "backwards");
+        if (animate) run(l.face, enter(unit, trend, still), ROLL_MS, still ? 0 : landAt + enterAt(n), SPRING, "backwards");
         return l;
       }
       const old = live[o];
       let f = old.face;
       // A morphable icon reshapes into the new one; any other new element is drawn fresh.
-      if (unit.node && unit.node !== old.node && !morphIcon(old.face, unit.node, animate && !still ? changeAt(unit.rect.left) : null)) old.face.replaceWith((f = face(unit)));
+      if (unit.node && unit.node !== old.node && !morphIcon(old.face, unit.node, animate && !still ? enterAt(n) : null)) old.face.replaceWith((f = face(unit)));
       if (unit.text !== old.text) {
         // Both faces share the box, stacked, so the old value leaves through one edge as the new one arrives through the other.
         old.box.append((f = face(unit)));
         if (!animate) old.face.remove();
         else {
-          const delay = still ? 0 : changeAt(unit.rect.left);
+          const delay = still ? 0 : enterAt(n);
           const leavingFace = old.face;
           clear(leavingFace);
           run(leavingFace, exit(now[o], old, -trend, still), ROLL_MS, delay, SPRING, "forwards").finished.then(() => leavingFace.remove(), () => leavingFace.remove());
@@ -242,9 +259,19 @@ export function morphChanges(target: string | Element | null): () => void {
       place(old.box, unit, origin);
       const dx = was[o].left - unit.rect.left;
       const dy = was[o].top - unit.rect.top;
-      if (animate && !still && Math.hypot(dx, dy) >= 0.5) {
+      if (animate && !still && Math.abs(dy) >= unit.rect.height / 2) {
+        // A word pushed onto another line would glide there diagonally, across every word in between. Instead it
+        // fades out where it was, with what leaves, and back in where it lands, with what arrives.
+        const ghost = old.box.cloneNode(false) as HTMLElement;
+        ghost.append(old.face.cloneNode(true));
+        Object.assign(ghost.style, { left: `${was[o].left - origin.x}px`, top: `${was[o].top - origin.y}px` });
+        overlay.append(ghost);
+        run(ghost, [{ opacity: 1 }, { opacity: 0 }], ROLL_MS * EXIT_CLEAR, 0, SETTLE, "forwards").finished.then(() => ghost.remove(), () => ghost.remove());
         clear(old.box);
-        run(old.box, [{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], total, 0, SETTLE, "backwards");
+        run(old.box, [{ opacity: 0 }, { opacity: 0, offset: ENTER_FROM }, { opacity: 1 }], ROLL_MS, landAt, SETTLE, "backwards");
+      } else if (animate && !still && Math.hypot(dx, dy) >= 0.5) {
+        clear(old.box);
+        run(old.box, [{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], ROLL_MS, roomAt, SETTLE, "backwards");
       }
       return { ...unit, box: old.box, face: f };
     });

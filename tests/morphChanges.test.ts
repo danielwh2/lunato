@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { morphChanges, vMorphChanges } from "../src/index";
 import "../src/element";
-import { EDGE, ENTER_FROM, EXIT_CLEAR, FIT_GROW, ROLL_MS, SPREAD } from "../src/tokens";
+import { EDGE, ENTER_FROM, EXIT_CLEAR, FIT_GROW, LANDED, ROLL_MS, ROOM, SPREAD } from "../src/tokens";
 
-// happy-dom has no layout and no Web Animations. Every glyph measures as a 10px box in
-// reading order, and each animate() call is recorded so a test can read what moved.
+// happy-dom has no layout and no Web Animations. A glyph measures as a 10px box at its offset in its text, a drawn
+// copy as the box its inline style puts it in, and each animate() call is recorded so a test can read what moved.
 type Call = { el: Element; frames: Keyframe[]; options: KeyframeAnimationOptions };
 const calls: Call[] = [];
 const mutation = () => new Promise((done) => setTimeout(done));
@@ -17,9 +17,15 @@ beforeEach(() => {
   cursor = 0;
   document.body.innerHTML = "";
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
-  Range.prototype.getBoundingClientRect = () => box(cursor++);
+  Range.prototype.getBoundingClientRect = function () {
+    cursor++;
+    return box(this.startOffset);
+  };
   Element.prototype.getBoundingClientRect = function () {
-    return box(cursor++);
+    const { left, top, width, height } = (this as HTMLElement).style ?? {};
+    if (!left) return box(cursor++);
+    const [x, y, w, h] = [left, top, width, height].map((v) => parseFloat(v));
+    return { left: x, top: y, width: w, height: h, right: x + w, bottom: y + h, x, y, toJSON() {} } as DOMRect;
   };
   Element.prototype.animate = function (frames, options) {
     calls.push({ el: this, frames: frames as Keyframe[], options: options as KeyframeAnimationOptions });
@@ -49,7 +55,7 @@ describe("morphChanges", () => {
     expect(calls).toHaveLength(0); // the first paint does not animate
   });
 
-  it("rolls the old letters up and out and the new ones up and in, swept left to right", async () => {
+  it("rolls the old letters up and out and the new ones up and in, a word at a time", async () => {
     const el = label("Copy");
     morphChanges(el);
     el.textContent = "Copied";
@@ -65,9 +71,21 @@ describe("morphChanges", () => {
     expect(into.map((c) => c.el.textContent)).toEqual(["i", "e", "d"]);
     expect(into[0].frames[0].translate).toBe("0 10px");
     expect(into[0].frames[1]).toEqual({ opacity: 0, offset: ENTER_FROM }); // shows only once it is on its way
-    const delays = into.map((c) => c.options.delay as number);
-    expect(delays).toEqual([...delays].sort((x, y) => x - y)); // left to right
-    expect(Math.max(...delays)).toBeLessThanOrEqual(ROLL_MS * SPREAD);
+    // One word, so its letters all start together and it rises straight, never at a slant.
+    expect(new Set(into.map((c) => c.options.delay))).toEqual(new Set([0]));
+  });
+
+  it("sweeps left to right by word as text streams in, each word rising as one piece", async () => {
+    const el = label("Yes");
+    morphChanges(el);
+    el.textContent = "Yes if the";
+    await mutation();
+    const into = rolls().filter((c) => c.frames[0].opacity === 0);
+    const delay = (text: string) => into.filter((c) => c.el.textContent === text).map((c) => c.options.delay as number);
+    expect(new Set(delay("t").concat(delay("h"), delay("e"))).size).toBe(1); // "the" moves as one
+    expect(delay("i")[0]).toBe(delay("f")[0]);
+    expect(delay("i")[0]).toBeLessThan(delay("t")[0]); // "if" before "the"
+    expect(delay("t")[0]).toBeLessThanOrEqual(ROLL_MS * SPREAD);
   });
 
   it("counts like an odometer: 9 to 10 rolls the ones slot and brings in only the tens", async () => {
@@ -181,6 +199,61 @@ describe("morphChanges", () => {
     await mutation();
     // It holds its width while the leaving letters fade, then closes; held, not released, during the wait.
     expect(fits()[0].options).toMatchObject({ delay: ROLL_MS * EXIT_CLEAR, fill: "backwards" });
+  });
+
+  it("hands a word pushed onto the next line over in place, never gliding it across the text between", async () => {
+    const el = label("ab cd");
+    morphChanges(el);
+    const [, , c, d] = [...el.querySelector("[aria-hidden]")!.children] as HTMLElement[];
+    // The edit wraps: "cd" lands one 10px line lower.
+    Range.prototype.getBoundingClientRect = function () {
+      const i = cursor++;
+      return this.toString() === "c" || this.toString() === "d" ? { ...box(i), top: 10, y: 10, bottom: 20 } : box(i);
+    };
+    el.textContent = "abc cd";
+    await mutation();
+    const on = (el: Element) => calls.filter((call) => call.el === el);
+    for (const glyph of [c, d]) {
+      expect(on(glyph).some((call) => "translate" in call.frames[0])).toBe(false); // no diagonal glide
+      expect(on(glyph)[0].frames).toEqual([{ opacity: 0 }, { opacity: 0, offset: ENTER_FROM }, { opacity: 1 }]);
+    }
+    const ghosts = calls.filter((call) => call.frames[0].opacity === 1 && call.frames.length === 2 && !("translate" in call.frames[1]));
+    expect(ghosts.map((g) => g.el.textContent)).toEqual(["c", "d"]); // faded out where they were
+    expect(ghosts[0].options.duration).toBe(ROLL_MS * EXIT_CLEAR);
+  });
+
+  it("moves one thing at a time when words move: leaving, then gliding into the room, then arriving", async () => {
+    const glides = () => calls.filter((c) => "translate" in c.frames[0] && !("opacity" in c.frames[0]));
+    const arrivals = () => rolls().filter((c) => c.frames[0].opacity === 0 && "translate" in c.frames[0]);
+    // A word goes in the middle: "c" glides right to make room, from the start, and "b" arrives once it has all but landed.
+    const grow = label("a c");
+    morphChanges(grow);
+    grow.textContent = "a b c";
+    await mutation();
+    expect(glides().map((c) => c.el.textContent)).toEqual(["c"]);
+    expect(glides()[0].options.delay).toBe(0); // nothing leaves, so nothing to wait for
+    expect(arrivals().map((c) => c.el.textContent)).toEqual(["b"]);
+    expect(arrivals()[0].options.delay).toBeGreaterThanOrEqual(ROLL_MS * LANDED);
+
+    // A word goes from the middle: it leaves first, and "c" glides left into its place only after it has all but faded.
+    calls.length = 0;
+    const shrink = label("a x c");
+    morphChanges(shrink);
+    shrink.textContent = "a c";
+    await mutation();
+    const out = rolls().filter((c) => c.frames.at(-1)!.opacity === 0);
+    expect(out.map((c) => c.el.textContent)).toEqual(["x"]);
+    expect(out[0].options.delay).toBe(0);
+    expect(glides()[0].options.delay).toBe(ROLL_MS * ROOM);
+
+    // Nothing gliding, as when a word is added at the end: the arrival does not wait.
+    calls.length = 0;
+    const append = label("a");
+    morphChanges(append);
+    append.textContent = "a b";
+    await mutation();
+    expect(glides()).toHaveLength(0);
+    expect(arrivals()[0].options.delay).toBe(0);
   });
 
   it("only crossfades under reduced motion", async () => {

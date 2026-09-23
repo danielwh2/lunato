@@ -25,6 +25,8 @@ export const TRAVEL = 1; // share of its own box a glyph travels: a whole box, s
 export const EXIT_CLEAR = 0.55; // share of the roll by which a leaving glyph has faded out: gone before anything slides into its place
 export const ENTER_FROM = 0.2; // share of the roll before an arriving glyph starts to show: it comes into view already moving
 export const EDGE = 0.12; // em of soft fade where a rolling glyph crosses the window's top or bottom edge: inside a glyph box's own margin, so ink at rest is never dimmed
+export const ROOM = 0.25; // share of a roll the leaving glyphs get before a kept one glides into their place: by then they have all but faded
+export const LANDED = 0.45; // share of a roll the glides get before arrivals drop in: about 85% of the way, so nothing arrives through a glyph still sliding past
 export const FIT_GROW = 0.6; // share of the roll a growing element takes to reach its width: there before the letters arriving at its edge show
 export const BLUR = 0.12; // em of blur at the edge of a roll, so it scales with the type
 

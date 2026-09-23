@@ -2,7 +2,7 @@
 
 <img src="media/title.gif" alt="The title 'Only what changed moves.' with its last word morphing through rolls, turns, glides" width="100%">
 
-Change an element's text and only what changed moves. Letters, numbers, emoji and icons. One function, zero dependencies.
+The motion layer for AI interfaces. Streamed answers, agent status, live captions and rewrites change their minds as they go; lunato moves only the words that changed. One function, zero dependencies, any framework.
 
 ```
 npm i lunato
@@ -37,6 +37,23 @@ Anywhere else, use the element:
 
 Safe with StrictMode, hot reload and server imports.
 
+## In an AI interface
+
+Bind the elements that change in place, and render into them as you already do:
+
+```tsx
+<p ref={morphChanges}>{answer}</p>                               // streamed words rise in as they arrive
+<span ref={morphChanges}>{status}</span>                         // "Reading 4 sources" → "Reading 9 sources"
+<span ref={morphChanges}>{busy ? <StopIcon /> : <SendIcon />}</span>  // the icon morphs
+<span ref={morphChanges}>{tokens.toLocaleString()} tokens</span>  // digits roll
+```
+
+Regenerated answers, rewrites in another tone and live captions work the same way: only the words that changed move.
+
+## Components
+
+The vault on lunato's site has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, image generation, streaming text and token meters. They are React 19 and Tailwind v4, one file each, to copy into your project and change as you like.
+
 ## What moves
 
 <p>
@@ -45,7 +62,7 @@ Safe with StrictMode, hot reload and server imports.
 </p>
 <img src="media/emoji.gif" alt="Reaction chips swapping emoji and counting up" width="100%">
 
-- **Text.** Unchanged words hold still, however many edits sit between them, so a caption correcting itself only moves the words that changed. Inside a changed word, shared letters stay too.
+- **Text.** Unchanged words hold still, however many edits sit between them, so a caption correcting itself only moves the words that changed. Inside a changed word, shared letters stay too. A word pushed onto the next line fades across instead of flying over the text.
 - **Numbers.** Digits pair from the right like an odometer, so 9 to 10 rolls the 9 and brings in only the 1. Falling numbers roll down.
 - **Emoji and icons.** Shrink and blur into the next one.
 - **Line icons.** An svg of up to three `<line>`s morphs into another, turning when it is the same drawing rotated. After Benji Taylor's [Morphing icons with Claude](https://benji.org/morphing-icons-with-claude).
@@ -64,6 +81,7 @@ The real text stays in the DOM for screen readers, search and selection; the ani
 - A rotation around the element skews the morph; a scale does not.
 - The width only eases on one-line text.
 - `text-shadow` and `text-decoration` paint under the animation.
+- Text painted with `background-clip: text` shows twice: the gradient still paints through the hidden originals under the moving copies. Animate `color` instead.
 
 ## Prior art
 

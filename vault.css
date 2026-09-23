@@ -1,0 +1,617 @@
+/* lunato/vault.css: the styles and motion of every vault component, in one sheet, installed with lunato. Each
+   component that needs it imports it, so installing lunato is all the setup there is, and bundlers include it once:
+
+     import "lunato/vault.css";
+
+   Every class and keyframe starts with lunato-, so nothing here touches the rest of your app. Each component's rules
+   sit under its name, with why they move the way they do. */
+
+/* AiInput, from ai-input.tsx.
+   The beam: colour sits fixed round the edge in the colours stars flash (white, blue-white, a low star's gold, a
+   faint violet), and a soft window with a bright head sweeps over it, so the light shifts as the head passes each
+   zone. The stroke is the 1px ring; a blurred copy is the bloom. One lap takes 7s. Off while idle. */
+@property --lunato-beam { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+.lunato-ai-input {
+  --zones: radial-gradient(ellipse 12px 20px at 2% 70%, oklch(0.94 0.04 240), transparent), radial-gradient(ellipse 70px 10px at 28% -2%, oklch(0.97 0.01 250), transparent), radial-gradient(ellipse 60px 9px at 58% 102%, oklch(0.9 0.04 280), transparent), radial-gradient(ellipse 80px 10px at 78% -2%, oklch(0.93 0.06 80), transparent), radial-gradient(ellipse 12px 20px at 99% 30%, oklch(0.97 0.01 250), transparent), radial-gradient(ellipse 50px 9px at 12% 102%, oklch(0.92 0.05 230), transparent);
+  --head: conic-gradient(from var(--lunato-beam), transparent 0 54%, oklch(1 0 0 / 0.15) 58%, oklch(1 0 0 / 0.55) 63%, oklch(1 0 0 / 0.9) 66%, oklch(1 0 0 / 0.55) 69%, oklch(1 0 0 / 0.15) 74%, transparent 78%);
+  --window: conic-gradient(from var(--lunato-beam), transparent 0 30%, oklch(0 0 0 / 0.1) 36%, oklch(0 0 0 / 0.4) 44%, #000 52% 80%, oklch(0 0 0 / 0.4) 86%, oklch(0 0 0 / 0.1) 92%, transparent 95%);
+}
+.lunato-ai-input::before, .lunato-ai-input::after { content: ""; position: absolute; inset: -1px; padding: 1px; border-radius: inherit; corner-shape: inherit; background: var(--head), var(--zones); mask: var(--window), linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: intersect, exclude; opacity: 0; pointer-events: none; transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1); }
+.lunato-ai-input::after { padding: 2px; filter: blur(5px); }
+.lunato-ai-input[data-busy] { animation: lunato-beam 7s linear infinite; }
+.lunato-ai-input[data-busy]::before { animation: lunato-beam-twinkle 3.2s ease-in-out infinite; }
+.lunato-ai-input[data-busy]::after { animation: lunato-beam-bloom 4.7s ease-in-out infinite 1.3s; }
+@keyframes lunato-beam { to { --lunato-beam: 360deg; } }
+@keyframes lunato-beam-twinkle { 0%, 100% { opacity: 0.75; } 35% { opacity: 0.4; } 60% { opacity: 0.65; } 80% { opacity: 0.45; } }
+@keyframes lunato-beam-bloom { 0%, 100% { opacity: 0.45; } 35% { opacity: 0.2; } 60% { opacity: 0.4; } 80% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-ai-input[data-busy] { animation: none; }
+  .lunato-ai-input[data-busy]::before, .lunato-ai-input[data-busy]::after { animation: none; opacity: 0.4; }
+}
+
+/* Attachments, from attachments.tsx.
+   Nothing jumps as files come and go. A chip rises 4px out of a 2px blur over 360ms as it arrives. One taken off
+   stays where it stood, out of the flow, and fades as it shrinks to 92% under a 2px blur over 180ms, while the chips
+   after it glide into its place and the row eases to its new height over 240ms (both measured in attachments.tsx).
+   One still uploading dims its mark to 40% under an arc turning once a second; both ease back as the upload lands,
+   and a chip whose upload failed eases its border to red.
+   Reduced motion: no rise, glide, shrink or turn; chips still fade in and out. */
+.lunato-attachments { overflow: hidden; }
+.lunato-attachment { transition: opacity 360ms cubic-bezier(0.2, 0, 0, 1), translate 360ms cubic-bezier(0.2, 0, 0, 1), filter 360ms cubic-bezier(0.2, 0, 0, 1), border-color 220ms cubic-bezier(0.2, 0, 0, 1); }
+@starting-style { .lunato-attachment:not([data-leaving]) { opacity: 0; translate: 0 4px; filter: blur(2px); } } /* a leaving ghost is new too, but only fades out */
+.lunato-attachment[data-leaving] { pointer-events: none; animation: lunato-attachment-out 180ms cubic-bezier(0.2, 0, 0, 1) forwards; }
+@keyframes lunato-attachment-out { to { opacity: 0; scale: 0.92; filter: blur(2px); } }
+.lunato-attachment-mark { transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-attachment[data-uploading] .lunato-attachment-mark { opacity: 0.4; }
+.lunato-attachment-arc { opacity: 0; transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1); animation: lunato-attachment-turn 1s linear infinite paused; }
+.lunato-attachment[data-uploading] .lunato-attachment-arc { opacity: 1; animation-play-state: running; }
+@keyframes lunato-attachment-turn { to { rotate: 360deg; } }
+@keyframes lunato-attachment-fade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-attachment { transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1), border-color 220ms cubic-bezier(0.2, 0, 0, 1); }
+  .lunato-attachment[data-leaving] { animation-name: lunato-attachment-fade; }
+  .lunato-attachment-arc { animation: none; }
+}
+
+/* CodeDiff, from code-diff.tsx.
+   Added lines open from nothing to full height (0fr to 1fr) while their text rises out of a light blur a beat behind.
+   The rise and blur sit on the row's children, inside its clip: on the row itself they would spill past the scroll
+   box's edges mid-entrance and flash a scrollbar. A line's wash and strike ease in on the colour curve, so a context
+   line turning "del" reads as struck out in place. The caret breathes rather than blinks. Reduced motion opens lines
+   at once and holds the caret still. */
+.lunato-diff-line { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-diff-row { min-height: 0; overflow: hidden; display: grid; grid-template-columns: 20px minmax(0, 1fr); padding-right: 10px; color: oklch(0.556 0 0); transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1), color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-diff-row > * { transition: opacity 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, translate 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, filter 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, text-decoration-color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-diff-text { overflow: hidden; text-overflow: ellipsis; white-space: pre; text-decoration: line-through transparent; }
+.lunato-diff-line[data-kind="add"] .lunato-diff-row { background-color: rgb(22 163 74 / 0.1); color: oklch(0.205 0 0); }
+.lunato-diff-line[data-kind="add"] .lunato-diff-row > :first-child { color: oklch(0.527 0.154 150.069); }
+.lunato-diff-line[data-kind="del"] .lunato-diff-row { background-color: rgb(220 38 38 / 0.08); }
+.lunato-diff-line[data-kind="del"] .lunato-diff-row > :first-child { color: oklch(0.577 0.245 27.325); }
+.lunato-diff-line[data-kind="del"] .lunato-diff-text { text-decoration-color: rgb(220 38 38 / 0.6); }
+@starting-style {
+  .lunato-diff-line[data-kind="add"] { grid-template-rows: 0fr; }
+  .lunato-diff-line[data-kind="add"] .lunato-diff-row > * { opacity: 0; translate: 0 4px; filter: blur(2px); }
+}
+.lunato-diff-caret::after { content: ""; display: inline-block; width: 1.5px; height: 1em; margin-left: 1px; vertical-align: -0.15em; background: currentColor; animation: lunato-diff-caret 1s ease-in-out infinite; }
+@keyframes lunato-diff-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-diff-line { transition: none; }
+  .lunato-diff-row > * { translate: none; filter: none; transition-property: opacity, text-decoration-color; }
+  .lunato-diff-caret::after { animation: none; }
+}
+
+/* CodeFiles, from code-files.tsx.
+   A new row opens from nothing to full height (its 24px face sits in a wrapper that can shrink to 0) while its
+   content rises out of a light blur a beat behind and its wash fades up. The rise and blur sit on the face's children,
+   inside the row's clip: on the row itself they would spill past the scroll box's edges mid-entrance and flash a
+   scrollbar. The row being edited sits on a neutral wash with its name in ink. The arc turns once a second; its swap
+   with the file icon is sequenced, the outgoing one shrinking away at once and the incoming one growing in 140ms
+   later. Reduced motion opens rows at once, holds the arc still and keeps only the fades. */
+.lunato-file { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-file-row { min-height: 0; overflow: hidden; }
+.lunato-file-face { transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-file-face > * { transition: opacity 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, translate 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, filter 360ms cubic-bezier(0.2, 0, 0, 1) 80ms; }
+.lunato-file[data-editing] .lunato-file-face { background-color: oklch(0.97 0 0); }
+@starting-style {
+  .lunato-file { grid-template-rows: 0fr; }
+  .lunato-file[data-editing] .lunato-file-face { background-color: transparent; }
+  .lunato-file-face > * { opacity: 0; translate: 0 4px; filter: blur(2px); }
+}
+.lunato-file-icon, .lunato-file-arc { grid-area: 1 / 1; transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), scale 220ms cubic-bezier(0.2, 0, 0, 1), filter 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-file .lunato-file-arc, .lunato-file[data-editing] .lunato-file-icon { opacity: 0; scale: 0.25; filter: blur(4px); transition-delay: 0s; }
+.lunato-file .lunato-file-icon, .lunato-file[data-editing] .lunato-file-arc { opacity: 1; scale: 1; filter: none; transition-delay: 140ms; }
+.lunato-file[data-editing] .lunato-file-arc { color: oklch(0.205 0 0); animation: lunato-file-turn 1s linear infinite; }
+@keyframes lunato-file-turn { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-file { transition: none; }
+  .lunato-file-face > * { translate: none; filter: none; transition-property: opacity; }
+  .lunato-file-icon, .lunato-file-arc { transition-property: opacity; }
+  .lunato-file .lunato-file-arc, .lunato-file[data-editing] .lunato-file-icon { scale: 1; filter: none; }
+  .lunato-file[data-editing] .lunato-file-arc { animation: none; }
+}
+
+/* CodeInline, from code-inline.tsx.
+   A changed line's wash holds for a beat, then fades over the rest of 1.2s. Its corner is the card's 12px minus the 3px
+   padding and 1px border. New lines open from nothing to full height. Reduced motion opens them at once; the wash
+   only fades, so it stays. */
+.lunato-inline-row { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-inline-row > div { min-height: 0; overflow: hidden; }
+@starting-style { .lunato-inline-row[data-new] { grid-template-rows: 0fr; } }
+.lunato-inline-flash { position: absolute; inset: 0; border-radius: 8px; corner-shape: squircle; background: rgb(245 158 11 / 0.16); opacity: 0; pointer-events: none; animation: lunato-inline-flash 1200ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-inline-flash[data-initial] { animation: none; }
+@keyframes lunato-inline-flash { 0%, 20% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lunato-inline-row { transition: none; } }
+
+/* EffortChip, from effort-chip.tsx.
+   A dot lights 30ms after the one before it in the fill order, on the spring, so a rise grows out from the centre and
+   a fall shrinks back into it. Unlit dots stay as faint pips, so the glyph keeps its square. At Max every dot steps
+   through the rainbow as flat colours, 2.6s a turn, each a little behind the one before. Reduced motion lights at once
+   and holds the level's colour. */
+.lunato-chip-dot { display: block; width: 3px; height: 3px; border-radius: 1px; background: currentColor; opacity: 0.15; scale: 0.6; transition: scale 320ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--rank) * 30ms), opacity 160ms cubic-bezier(0.2, 0, 0, 1) calc(var(--rank) * 30ms), background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-chip-dot[data-lit] { background: var(--c); opacity: 1; scale: 1; }
+.lunato-chip[data-max] .lunato-chip-dot { animation: lunato-chip-rainbow 2600ms linear calc(var(--k) * -290ms) infinite; }
+@keyframes lunato-chip-rainbow { 0%, 100% { background-color: #e11d48; } 20% { background-color: #d97706; } 40% { background-color: #059669; } 60% { background-color: #2563eb; } 80% { background-color: #7c3aed; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-chip-dot { transition: none; }
+  .lunato-chip[data-max] .lunato-chip-dot { animation: none; }
+}
+
+/* EffortSlider, from effort-slider.tsx.
+   The dot and the fill sit at --pos along the track. Dragged, they follow the pointer with no transition; let go, or
+   moved by a key, they spring onto the stop in 320ms. The dot grows 15% under the pointer and 25% while held, on the
+   press timing; the hover rule comes first so the held size wins while a drag is also a hover. The word is the level's
+   purple pushed 30% toward ink, so even Low reads at 3.8:1 on white (Medium 4.7, High 6.0, X-High 7.4, Max 9.3), and
+   changes colour over 160ms. At Max the fill, the lit stops, the dot's ring and the word step through the rainbow as
+   flat colours, 2.6s a turn, each part 130ms behind the one to its left, so the colours run along the track into the word.
+   The word changes colour, never paints a gradient: lunato draws its letters as copies in the current colour over the
+   hidden originals, and a gradient clipped to the text would show through the originals as a second word. Reduced
+   motion: no spring and no rainbow motion; the colours still change. */
+.lunato-slider-fill { --i: 0; width: calc(var(--pos) * 100%); background: var(--c); transition: width 320ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-slider-stop { position: absolute; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: oklch(0.87 0 0); transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-slider-stop[data-on] { background: var(--c); }
+.lunato-slider-knob { --i: calc(var(--n) - 1); position: absolute; top: 50%; left: calc(var(--pos) * 100%); box-sizing: border-box; width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 1px solid rgb(0 0 0 / 0.12); border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); transition: left 320ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 120ms cubic-bezier(0.2, 0, 0, 1), border-width 160ms cubic-bezier(0.2, 0, 0, 1); }
+@media (hover: hover) and (pointer: fine) { .lunato-slider-track:hover .lunato-slider-knob { scale: 1.15; } }
+.lunato-slider[data-dragging] :is(.lunato-slider-fill, .lunato-slider-knob) { transition-property: background-color, scale, border-width; }
+.lunato-slider[data-dragging] .lunato-slider-knob { scale: 1.25; }
+.lunato-slider-word { --i: var(--n); color: color-mix(in oklch, var(--c) 70%, oklch(0.205 0 0)); transition: color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-slider[data-max] :is(.lunato-slider-fill, .lunato-slider-stop[data-on]) { animation: lunato-slider-rainbow 2600ms linear calc((var(--i) - var(--n)) * 130ms) infinite; }
+.lunato-slider[data-max] .lunato-slider-knob { border-width: 2px; border-color: var(--c); animation: lunato-slider-ring 2600ms linear calc((var(--i) - var(--n)) * 130ms) infinite; }
+.lunato-slider[data-max] .lunato-slider-word { animation: lunato-slider-ink 2600ms linear calc((var(--i) - var(--n)) * 130ms) infinite; }
+@keyframes lunato-slider-rainbow { 0%, 100% { background-color: #e11d48; } 20% { background-color: #d97706; } 40% { background-color: #059669; } 60% { background-color: #2563eb; } 80% { background-color: #7c3aed; } }
+@keyframes lunato-slider-ring { 0%, 100% { border-color: #e11d48; } 20% { border-color: #d97706; } 40% { border-color: #059669; } 60% { border-color: #2563eb; } 80% { border-color: #7c3aed; } }
+@keyframes lunato-slider-ink { 0%, 100% { color: #e11d48; } 20% { color: #d97706; } 40% { color: #059669; } 60% { color: #2563eb; } 80% { color: #7c3aed; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-slider-fill, .lunato-slider-knob { transition-property: background-color, border-width; }
+  .lunato-slider[data-max] :is(.lunato-slider-word, .lunato-slider-fill, .lunato-slider-stop[data-on], .lunato-slider-knob) { animation: none; }
+}
+
+/* EffortTape, from effort-tape.tsx.
+   A ruler 24px a level, with three short ticks between the long ones, slid under a fixed ink mark in a 76px window
+   that fades out at either side. The long ticks are the levels, lit in the level's purple up to the chosen one. The
+   tape follows a drag with no easing and, let go, glides to its level over 420ms, decelerating the way a thrown wheel
+   comes to rest; a key moves it the same way. At Max the mark and the word step through the rainbow. Reduced motion:
+   the tape moves at once. */
+.lunato-tape-window { cursor: grab; mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); }
+.lunato-tape[data-dragging] .lunato-tape-window { cursor: grabbing; }
+.lunato-tape-strip { translate: calc(var(--p) * -24px - 1px) 0; transition: translate 420ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-tape[data-dragging] .lunato-tape-strip { transition: none; }
+.lunato-tape-minor { stroke: oklch(0.87 0 0); stroke-width: 1; stroke-linecap: round; }
+.lunato-tape-level { stroke: oklch(0.8 0 0); stroke-width: 1.5; stroke-linecap: round; transition: stroke 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-tape-level[data-on] { stroke: var(--c); }
+.lunato-tape-mark { position: absolute; left: 50%; top: 5px; width: 2px; height: 18px; margin-left: -1px; border-radius: 1px; background: oklch(0.205 0 0); }
+.lunato-tape[data-max] .lunato-tape-mark { animation: lunato-effort-paint 2600ms linear infinite; }
+.lunato-tape[data-max] .lunato-effort-word { animation: lunato-effort-ink 2600ms linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-tape-strip { transition: none; }
+  .lunato-tape[data-max] :is(.lunato-tape-mark, .lunato-effort-word) { animation: none; }
+}
+
+/* The effort word, shared by EffortTape, EffortSegments and EffortCharge: the level's purple pushed 30%
+   toward ink, so even Low reads at 3.8:1 on white, changing over 160ms. The rainbow the four step through at Max, as
+   flat colours, one keyframe set a property: colour, background, fill and stroke. */
+.lunato-effort-word { color: color-mix(in oklch, var(--c) 70%, oklch(0.205 0 0)); transition: color 160ms cubic-bezier(0.2, 0, 0, 1); }
+@keyframes lunato-effort-ink { 0%, 100% { color: #e11d48; } 20% { color: #d97706; } 40% { color: #059669; } 60% { color: #2563eb; } 80% { color: #7c3aed; } }
+@keyframes lunato-effort-paint { 0%, 100% { background-color: #e11d48; } 20% { background-color: #d97706; } 40% { background-color: #059669; } 60% { background-color: #2563eb; } 80% { background-color: #7c3aed; } }
+@keyframes lunato-effort-stroke { 0%, 100% { stroke: #e11d48; fill: #e11d48; } 20% { stroke: #d97706; fill: #d97706; } 40% { stroke: #059669; fill: #059669; } 60% { stroke: #2563eb; fill: #2563eb; } 80% { stroke: #7c3aed; fill: #7c3aed; } }
+
+/* EffortCharge, from effort-charge.tsx.
+   A 1.5px ring round a bolt, filled in the level's purple from twelve o'clock: at rest to the chosen level, easing
+   there over 320ms; while held, straight from the charge with no easing, so it climbs at the hold's own pace. Each
+   level has a tick on the ring that lights as the fill reaches it, and reaching one sends a pulse out from the dial,
+   a ring that grows 30% and fades over 360ms. The dial sinks 4% while held. At Max the ring, the ticks and the word
+   step through the rainbow. Reduced motion: no pulse, no easing. */
+.lunato-charge-track { fill: none; stroke: oklch(0.922 0 0); stroke-width: 1.5; }
+.lunato-charge-fill { fill: none; stroke: var(--c); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 100 200; stroke-dashoffset: calc(100 - var(--fill) * 100); transition: stroke-dashoffset 320ms cubic-bezier(0.2, 0, 0, 1), stroke 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-charge[data-charging] .lunato-charge-fill { transition-property: stroke; }
+.lunato-charge-tick { fill: oklch(0.87 0 0); transition: fill 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-charge-tick[data-on] { fill: var(--c); }
+.lunato-charge-bolt { color: color-mix(in oklch, var(--c) 70%, oklch(0.205 0 0)); transition: color 160ms cubic-bezier(0.2, 0, 0, 1), scale 120ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-charge-dial { transition: scale 120ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-charge[data-charging] .lunato-charge-dial { scale: 0.96; }
+.lunato-charge-pulse { position: absolute; inset: 2.5px; border: 1.5px solid var(--c); border-radius: 50%; opacity: 0; pointer-events: none; animation: lunato-charge-pulse 360ms cubic-bezier(0.2, 0, 0, 1); }
+@keyframes lunato-charge-pulse { from { opacity: 0.6; scale: 1; } to { opacity: 0; scale: 1.3; } }
+.lunato-charge[data-max] :is(.lunato-charge-fill, .lunato-charge-tick[data-on]) { animation: lunato-effort-stroke 2600ms linear infinite; }
+.lunato-charge[data-max] .lunato-effort-word { animation: lunato-effort-ink 2600ms linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-charge-fill { transition-property: stroke; }
+  .lunato-charge-pulse { display: none; }
+  .lunato-charge[data-max] :is(.lunato-charge-fill, .lunato-charge-tick[data-on], .lunato-effort-word) { animation: none; }
+}
+
+/* EffortSegments, from effort-segments.tsx.
+   A sunken tray padded 2px round five 16px segments, and a white thumb, cornered 8px inside the tray's 10px, that
+   springs to the chosen one in 460ms on the overshoot curve, as the vault's switches do. Each segment's mark stands a
+   step taller than the last, lit in the level's purple up to the chosen one. The thumb sinks 4% while pressed. At Max
+   the lit marks and the word step through the rainbow. Reduced motion: the thumb moves at once. */
+.lunato-segments-tray { padding: 2px; border-radius: 10px; background: rgb(0 0 0 / 0.045); corner-shape: squircle; }
+.lunato-segments-thumb { position: absolute; left: 2px; top: 2px; width: 16px; height: 20px; border-radius: 8px; corner-shape: squircle; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.08); translate: calc(var(--at) * 16px) 0; transition: translate 460ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 120ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-segments[data-held] .lunato-segments-thumb { scale: 0.96; }
+.lunato-segments-cell { position: relative; display: grid; place-items: end center; width: 16px; height: 20px; padding-bottom: 5px; box-sizing: border-box; }
+.lunato-segments-cell i { display: block; width: 2px; border-radius: 1px; background: oklch(0.8 0 0); transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-segments-cell i[data-on] { background: var(--c); }
+.lunato-segments[data-max] .lunato-segments-cell i[data-on] { animation: lunato-effort-paint 2600ms linear infinite; }
+.lunato-segments[data-max] .lunato-effort-word { animation: lunato-effort-ink 2600ms linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-segments-thumb { transition-property: scale; }
+  .lunato-segments[data-max] :is(.lunato-segments-cell i[data-on], .lunato-effort-word) { animation: none; }
+}
+
+/* LoaderGrid, from loader-grid.tsx.
+   Wave and ripple: a pulse every 1.6s at speed 1, the sweep crossing the grid in the first half of it, each dot lit
+   for about a third of the pulse and resting for the rest. Random: each dot's clock runs 1 to 1.8 times the pulse and
+   starts somewhere along it, then flashes quickly and fades back slowly. Delays are positive and every animation starts
+   and ends at the resting style, so the first frame is already at rest. Reduced motion holds every dot still, half lit. */
+.lunato-grid-dot { --lunato-cycle: calc(1.6s * var(--t) / var(--lunato-speed, 1)); transform-box: fill-box; transform-origin: center; opacity: 0.2; transform: scale(0.7); animation: lunato-grid-pulse var(--lunato-cycle) cubic-bezier(0.37, 0, 0.63, 1) calc(var(--k) * var(--lunato-cycle) / 2) infinite; }
+.lunato-grid[data-pattern="random"] .lunato-grid-dot { animation-name: lunato-grid-twinkle; animation-delay: calc(var(--k) * var(--lunato-cycle)); }
+@keyframes lunato-grid-pulse { 0%, 45%, 100% { opacity: 0.2; transform: scale(0.7); } 18% { opacity: 1; transform: scale(1); } }
+@keyframes lunato-grid-twinkle { 0%, 40%, 100% { opacity: 0.2; transform: scale(0.7); } 12% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .lunato-grid-dot { animation: none; opacity: 0.5; transform: none; } }
+
+/* LoaderInfinity, from loader-infinity.tsx.
+   One lap every 1.6s at speed 1, at an even pace. Reduced motion holds the stroke still on the right loop. */
+.lunato-infinity-run { animation: lunato-infinity-run calc(1.6s / var(--lunato-speed, 1)) linear infinite; }
+@keyframes lunato-infinity-run { to { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) { .lunato-infinity-run { animation: none; } }
+
+/* LoaderOrbit, from loader-orbit.tsx.
+   One orbit every 1.8s at speed 1: each axis swings half of it, on an ease-in-out that stands in for a sine. Down
+   starts a quarter orbit early, so the moon sets off from the left end heading to the front. The orbit is wide enough
+   that the shrunken moon clears the planet behind it and only overlaps it, drawn on top, in front. Reduced motion
+   parks the moon in front of the planet. */
+.lunato-orbit-x, .lunato-orbit-y, .lunato-orbit-moon { --lunato-half: calc(0.9s / var(--lunato-speed, 1)); animation: var(--lunato-half) cubic-bezier(0.37, 0, 0.63, 1) infinite alternate; }
+.lunato-orbit-x { animation-name: lunato-orbit-x; }
+.lunato-orbit-y { animation-name: lunato-orbit-y; animation-delay: calc(var(--lunato-half) / -2); }
+.lunato-orbit-moon { transform-box: fill-box; transform-origin: center; animation-name: lunato-orbit-depth; animation-delay: calc(var(--lunato-half) / -2); }
+@keyframes lunato-orbit-x { from { transform: translateX(-9px); } to { transform: translateX(9px); } }
+@keyframes lunato-orbit-y { from { transform: translateY(-4.6px); } to { transform: translateY(4.6px); } }
+@keyframes lunato-orbit-depth { from { transform: scale(0.6); opacity: 0.45; } to { transform: scale(1.1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-orbit-x, .lunato-orbit-y, .lunato-orbit-moon { animation: none; }
+  .lunato-orbit-y { transform: translateY(4.6px); }
+}
+
+/* LoaderPlanet, from loader-planet.tsx.
+   One turn every 4s at speed 1. Reduced motion holds the globe still. */
+.lunato-planet-surface { animation: lunato-planet-turn calc(4s / var(--lunato-speed, 1)) linear infinite; }
+@keyframes lunato-planet-turn { to { transform: translateX(-16px); } }
+@media (prefers-reduced-motion: reduce) { .lunato-planet-surface { animation: none; } }
+
+/* LoaderScribble, from loader-scribble.tsx.
+   Write, hold, rub out, rest: 2.4s at speed 1. The pen eases in and out as a hand does. Reduced motion shows the coil
+   written out and still. */
+.lunato-scribble-pen { animation: lunato-scribble-write calc(2.4s / var(--lunato-speed, 1)) cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@keyframes lunato-scribble-write { 0% { stroke-dashoffset: 100; } 45%, 55% { stroke-dashoffset: 0; } 95%, 100% { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) { .lunato-scribble-pen { animation: none; stroke-dashoffset: 0; } }
+
+/* LoaderSquare, from loader-square.tsx.
+   The stroke laps the edge every 1.2s at speed 1. The square turns a full circle in four quarter turns over 6.4s, each
+   moving for half its 1.6s and resting for the other half; a whole circle, so the loop restarts where it ends and the
+   stroke never jumps back. Reduced motion holds a still quarter of the edge lit. */
+.lunato-square-chase { animation: lunato-square-chase calc(1.2s / var(--lunato-speed, 1)) linear infinite; }
+.lunato-square-turn { transform-box: fill-box; transform-origin: center; animation: lunato-square-turn calc(6.4s / var(--lunato-speed, 1)) cubic-bezier(0.2, 0, 0, 1) infinite; }
+@keyframes lunato-square-chase { to { stroke-dashoffset: -100; } }
+@keyframes lunato-square-turn { 0% { transform: rotate(0deg); } 12.5%, 25% { transform: rotate(90deg); } 37.5%, 50% { transform: rotate(180deg); } 62.5%, 75% { transform: rotate(270deg); } 87.5%, 100% { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lunato-square-chase, .lunato-square-turn { animation: none; } }
+
+/* MaxBurst, from max-burst.tsx.
+   Reaching Max: a ring in Max's purple flares from 60% to 2.2 times its 16px over 520ms as it fades, and eight 3px
+   sparks fly 11 to 14px out, shrinking to 40% as they fade over 560ms, all on the plain curve, so the moment lands
+   and is gone before the next move. Reduced motion: no burst; the rainbow still says it is Max. */
+.lunato-burst { position: absolute; left: 50%; top: 50%; z-index: 1; width: 0; height: 0; pointer-events: none; }
+.lunato-burst::before { content: ""; position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; box-sizing: border-box; border: 1.5px solid #9c1fae; border-radius: 50%; opacity: 0; animation: lunato-burst-ring 520ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-burst i { position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%; opacity: 0; animation: lunato-burst-spark 560ms cubic-bezier(0.2, 0, 0, 1); }
+@keyframes lunato-burst-ring { from { opacity: 0.7; scale: 0.6; } to { opacity: 0; scale: 2.2; } }
+@keyframes lunato-burst-spark { from { opacity: 1; translate: 0 0; scale: 1; } to { opacity: 0; translate: var(--x) var(--y); scale: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .lunato-burst { display: none; } }
+
+/* PromptError, from prompt-panel.tsx.
+   The note on a failed message rises 4px out of a 2px blur over 220ms above its panel, which never moves for it. It
+   leaves at once when the error clears, as a retry is already under way.
+   Reduced motion: it fades in. */
+.lunato-prompt-error { transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), translate 220ms cubic-bezier(0.2, 0, 0, 1), filter 220ms cubic-bezier(0.2, 0, 0, 1); }
+@starting-style { .lunato-prompt-error { opacity: 0; translate: 0 4px; filter: blur(2px); } }
+@media (prefers-reduced-motion: reduce) { .lunato-prompt-error { transition-property: opacity; } }
+
+/* SendButton, from send-button.tsx.
+   The sky is fixed colour on purpose: it is a night sky in light and dark themes alike. */
+.lunato-send { position: relative; isolation: isolate; overflow: hidden; display: grid; place-items: center; flex: none; width: var(--lunato-size, 28px); height: var(--lunato-size, 28px); padding: 0; border: 0; border-radius: var(--lunato-radius, 12px); corner-shape: var(--lunato-corner, squircle); background: radial-gradient(circle at 50% 120%, oklch(0.32 0.06 262), oklch(0.17 0.035 268) 70%); color: oklch(0.98 0.005 260); box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.1); cursor: pointer; transition: filter 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease, scale 160ms cubic-bezier(0.2, 0, 0, 1); }
+/* A press sinks it 4% and dims it, quicker than it springs back, like the vault's other buttons. With nothing to send
+   the sky dims and its meteors stop falling, so it only comes alive once there is something to send. */
+.lunato-send:active:not(:disabled) { filter: brightness(0.9); scale: 0.96; transition-duration: 80ms; }
+.lunato-send:disabled { opacity: 0.4; cursor: default; }
+.lunato-send:disabled .lunato-send-idle::before, .lunato-send:disabled .lunato-send-idle::after { visibility: hidden; }
+.lunato-send:focus-visible { outline: 2px solid oklch(0.32 0.06 262 / 0.45); outline-offset: 2px; }
+.lunato-send[data-pointer]:focus-visible { outline: none; } /* pressed, not tabbed to: a key pressed after the click would otherwise ring it */
+.lunato-send > span { grid-area: 1 / 1; display: grid; transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), scale 220ms cubic-bezier(0.16, 1, 0.3, 1), filter 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+/* The glyphs swap as one shape shrinking into the next; the incoming one waits 140ms so the two never draw together. */
+.lunato-send .lunato-send-busy, .lunato-send[data-busy] .lunato-send-idle { opacity: 0; scale: 0.25; filter: blur(4px); transition-delay: 0s; }
+.lunato-send .lunato-send-idle, .lunato-send[data-busy] .lunato-send-busy { opacity: 1; scale: 1; filter: none; transition-delay: 140ms; }
+/* Two scatters of pinprick stars that twinkle on unrelated rhythms and wheel round very slowly. */
+.lunato-send::before, .lunato-send::after { content: ""; position: absolute; inset: -50%; z-index: -1; border-radius: 50%; pointer-events: none; will-change: transform, opacity; }
+.lunato-send::before {
+  background: radial-gradient(circle at 31% 27%, #fff 0 0.7px, transparent 1.2px), radial-gradient(circle at 62% 38%, #fff 0 0.5px, transparent 1px), radial-gradient(circle at 44% 66%, #fff 0 0.6px, transparent 1.1px), radial-gradient(circle at 72% 71%, #fff 0 0.45px, transparent 0.9px), radial-gradient(circle at 24% 56%, #fff 0 0.4px, transparent 0.9px), radial-gradient(circle at 55% 50%, #fff 0 0.35px, transparent 0.8px), radial-gradient(circle at 38% 42%, #fff 0 0.35px, transparent 0.8px), radial-gradient(circle at 66% 57%, #fff 0 0.3px, transparent 0.7px);
+  animation: lunato-stars-wheel 90s linear infinite, lunato-stars-twinkle 3.2s ease-in-out infinite;
+}
+.lunato-send::after {
+  background: radial-gradient(circle at 49% 31%, #fff 0 0.9px, oklch(0.9 0.03 240 / 0.5) 1.4px, transparent 2.4px), radial-gradient(circle at 27% 44%, #fff 0 0.5px, transparent 1px), radial-gradient(circle at 70% 46%, #fff 0 0.45px, transparent 0.9px), radial-gradient(circle at 58% 68%, #fff 0 0.4px, transparent 0.9px), radial-gradient(circle at 34% 72%, #fff 0 0.35px, transparent 0.8px), radial-gradient(circle at 46% 54%, #fff 0 0.3px, transparent 0.7px), radial-gradient(circle at 63% 26%, #fff 0 0.3px, transparent 0.7px);
+  animation: lunato-stars-wheel 90s linear infinite reverse, lunato-stars-twinkle 4.7s ease-in-out infinite 1.3s;
+}
+.lunato-send[data-busy]::before { animation-duration: 90s, 1.1s; }
+.lunato-send[data-busy]::after { animation-duration: 90s, 1.6s; }
+/* Meteors: two streaks fall from the top left at 45deg, head leading, picking up speed like a real fall. */
+.lunato-send .lunato-send-idle { position: relative; }
+.lunato-send .lunato-send-idle::before, .lunato-send .lunato-send-idle::after { content: ""; position: absolute; top: var(--m1-top, 0); left: var(--m1-left, 0); width: var(--m1-len, 10px); height: 1px; border-radius: 1px; background: linear-gradient(90deg, transparent, oklch(1 0 0 / var(--m1-glow, 0.95))); rotate: 45deg; transform-origin: right center; opacity: 0; pointer-events: none; animation: lunato-meteor var(--m1-dur, 9s) cubic-bezier(0.5, 0, 0.8, 0.6) var(--m1-delay, 0s) infinite; }
+.lunato-send .lunato-send-idle::after { top: var(--m2-top, 0); left: var(--m2-left, 6px); width: var(--m2-len, 7px); background: linear-gradient(90deg, transparent, oklch(1 0 0 / var(--m2-glow, 0.95))); animation-duration: var(--m2-dur, 13s); animation-delay: var(--m2-delay, 5s); }
+@keyframes lunato-meteor { 0% { translate: -18px -18px; opacity: 0; } 2% { opacity: 1; } 12%, 100% { translate: 20px 20px; opacity: 0; } }
+@keyframes lunato-stars-wheel { to { transform: rotate(360deg); } }
+@keyframes lunato-stars-twinkle { 0%, 100% { opacity: 1; } 35% { opacity: 0.45; } 60% { opacity: 0.85; } 80% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-send::before, .lunato-send::after, .lunato-send .lunato-send-idle::before, .lunato-send .lunato-send-idle::after { animation: none; }
+  .lunato-send > span { transition: none; }
+}
+
+/* SendPlane, from send-plane.tsx.
+   A white button with the plane in ink. Pressed, the plane crouches 1.5px back, then flies 18px out through the top
+   corner, shrinking and fading over 520ms on an accelerating curve, as a take-off picks up speed; the air it leaves
+   (drawn in send-plane.tsx) fades up behind it from 120ms. While it flies, a hover (once the pointer that sent it has
+   left) or keyboard focus dims the air to a third and brings the stop square in out of a blur; on a screen without
+   hover the square shows throughout. Back from an answer the air fades and a fresh plane glides in from the bottom
+   corner over 480ms. At rest a hover leans the plane 1px toward its heading. Reduced motion: no flight, lean or air;
+   the plane and the stop square trade places by fading. */
+.lunato-plane { --gone-scale: 0.25; --gone-blur: blur(4px); position: relative; overflow: hidden; display: grid; place-items: center; flex: none; width: var(--lunato-size, 28px); height: var(--lunato-size, 28px); padding: 0; border: 1px solid oklch(0.922 0 0); border-radius: var(--lunato-radius, 12px); corner-shape: var(--lunato-corner, squircle); background: #fff; color: oklch(0.205 0 0); cursor: pointer; transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1), border-color 160ms cubic-bezier(0.2, 0, 0, 1), opacity 160ms cubic-bezier(0.2, 0, 0, 1), scale 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-plane:active:not(:disabled) { scale: 0.96; transition-duration: 80ms; }
+.lunato-plane:disabled { opacity: 0.4; cursor: default; }
+.lunato-plane:focus-visible { outline: 2px solid oklch(0.708 0 0); outline-offset: 2px; }
+.lunato-plane[data-pointer]:focus-visible { outline: none; }
+.lunato-plane > * { grid-area: 1 / 1; }
+.lunato-plane > span { display: grid; transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), scale 220ms cubic-bezier(0.2, 0, 0, 1), filter 220ms cubic-bezier(0.2, 0, 0, 1), translate 160ms cubic-bezier(0.2, 0, 0, 1); }
+@media (hover: hover) {
+  .lunato-plane:hover:not(:disabled) { background: oklch(0.97 0 0); border-color: oklch(0.87 0 0); }
+  .lunato-plane:hover:not(:disabled):not([data-busy]) .lunato-plane-plane { translate: 1px -1px; }
+}
+.lunato-plane[data-busy] .lunato-plane-plane { animation: lunato-plane-off 520ms cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+.lunato-plane[data-back] .lunato-plane-plane { animation: lunato-plane-in 480ms cubic-bezier(0.2, 0, 0, 1); }
+@keyframes lunato-plane-off { 20% { translate: -1.5px 1.5px; } 100% { translate: 18px -18px; scale: 0.7; opacity: 0; } }
+@keyframes lunato-plane-in { from { translate: -14px 14px; scale: 0.8; opacity: 0; } }
+@keyframes lunato-plane-fade { to { opacity: 0; } }
+.lunato-plane-air { width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity 360ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-plane[data-busy] .lunato-plane-air { opacity: 1; transition-delay: 120ms; }
+/* The stop square waits out of sight until a press would use it. */
+.lunato-plane-stop { opacity: 0; scale: var(--gone-scale); filter: var(--gone-blur); }
+.lunato-plane[data-busy]:focus-visible .lunato-plane-stop { opacity: 1; scale: 1; filter: none; }
+.lunato-plane[data-busy]:focus-visible .lunato-plane-air { opacity: 0.35; transition-delay: 0s; }
+@media (hover: hover) {
+  .lunato-plane[data-busy]:hover:not([data-fresh]) .lunato-plane-stop { opacity: 1; scale: 1; filter: none; }
+  .lunato-plane[data-busy]:hover:not([data-fresh]) .lunato-plane-air { opacity: 0.35; transition-delay: 0s; }
+}
+@media (hover: none) {
+  .lunato-plane[data-busy] .lunato-plane-stop { opacity: 1; scale: 1; filter: none; }
+  .lunato-plane[data-busy] .lunato-plane-air { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-plane { --gone-scale: 1; --gone-blur: none; }
+  .lunato-plane[data-busy] .lunato-plane-plane { animation: lunato-plane-fade 160ms forwards; }
+  .lunato-plane[data-back] .lunato-plane-plane { animation: none; }
+  .lunato-plane:hover:not(:disabled):not([data-busy]) .lunato-plane-plane { translate: none; } /* the lean's own selector, so it wins by order */
+  .lunato-plane[data-busy] .lunato-plane-stop { opacity: 1; scale: 1; filter: none; } /* with no air to show, the square says it is sending */
+}
+
+/* SendSnow, from send-snow.tsx.
+   The night disc's daylight twin: a pale winter sky, fixed colour in any theme, with a navy arrow. Two layers of
+   flakes fall through the button on repeating tiles, the far one (smaller, 7s a tile) behind the near one (larger,
+   4.6s), each swaying 0.75px either side on its own rhythm, so the snow has depth. A third, fine and fast, drifts in
+   slanted by the wind: half there on hover, all there while the model answers. With nothing to send the sky dims and
+   the snow holds. The glyphs swap as the night disc's do. Reduced motion: the snow stands still; the flurry still
+   shows the state. */
+.lunato-snow { position: relative; isolation: isolate; overflow: hidden; display: grid; place-items: center; flex: none; width: var(--lunato-size, 28px); height: var(--lunato-size, 28px); padding: 0; border: 0; border-radius: var(--lunato-radius, 12px); corner-shape: var(--lunato-corner, squircle); background: radial-gradient(circle at 50% 120%, oklch(0.93 0.025 235), oklch(0.8 0.055 248) 75%); color: oklch(0.3 0.07 258); box-shadow: inset 0 0 0 1px oklch(0.3 0.07 258 / 0.12); cursor: pointer; transition: filter 260ms cubic-bezier(0.2, 0, 0, 1), opacity 160ms cubic-bezier(0.2, 0, 0, 1), scale 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-snow:active:not(:disabled) { filter: brightness(0.96); scale: 0.96; transition-duration: 80ms; }
+.lunato-snow:disabled { opacity: 0.4; cursor: default; }
+.lunato-snow:focus-visible { outline: 2px solid oklch(0.3 0.07 258 / 0.45); outline-offset: 2px; }
+.lunato-snow[data-pointer]:focus-visible { outline: none; }
+.lunato-snow::before, .lunato-snow::after, .lunato-snow-flurry { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.lunato-snow::before {
+  background: radial-gradient(circle at 12% 18%, #fff 0 0.7px, transparent 1.2px), radial-gradient(circle at 58% 6%, #fff 0 0.5px, transparent 1px), radial-gradient(circle at 82% 44%, #fff 0 0.6px, transparent 1.1px), radial-gradient(circle at 34% 62%, #fff 0 0.55px, transparent 1px), radial-gradient(circle at 70% 84%, #fff 0 0.5px, transparent 1px);
+  background-size: 28px 28px; opacity: 0.8;
+  animation: lunato-snow-far 7s linear infinite, lunato-snow-sway 3.2s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+}
+.lunato-snow::after {
+  background: radial-gradient(circle at 22% 30%, #fff 0 0.9px, transparent 1.5px), radial-gradient(circle at 68% 58%, #fff 0 0.8px, transparent 1.4px), radial-gradient(circle at 44% 92%, #fff 0 0.7px, transparent 1.2px);
+  background-size: 22px 22px;
+  animation: lunato-snow-near 4.6s linear infinite, lunato-snow-sway 2.3s cubic-bezier(0.37, 0, 0.63, 1) -1.1s infinite alternate-reverse;
+}
+.lunato-snow-flurry {
+  background: radial-gradient(circle at 30% 20%, #fff 0 0.6px, transparent 1px), radial-gradient(circle at 75% 65%, #fff 0 0.55px, transparent 1px);
+  background-size: 14px 14px; opacity: 0; transition: opacity 400ms cubic-bezier(0.2, 0, 0, 1);
+  animation: lunato-snow-gust 1.4s linear infinite;
+}
+@media (hover: hover) { .lunato-snow:hover:not(:disabled) .lunato-snow-flurry { opacity: 0.5; } }
+.lunato-snow[data-busy] .lunato-snow-flurry { opacity: 1; }
+.lunato-snow:disabled::before, .lunato-snow:disabled::after { animation-play-state: paused; }
+@keyframes lunato-snow-far { to { background-position: 0 28px; } }
+@keyframes lunato-snow-near { to { background-position: 0 22px; } }
+@keyframes lunato-snow-gust { to { background-position: -14px 14px; } }
+@keyframes lunato-snow-sway { from { translate: -0.75px 0; } to { translate: 0.75px 0; } }
+.lunato-snow > .lunato-snow-idle, .lunato-snow > .lunato-snow-busy { grid-area: 1 / 1; display: grid; transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), scale 220ms cubic-bezier(0.16, 1, 0.3, 1), filter 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.lunato-snow .lunato-snow-busy, .lunato-snow[data-busy] .lunato-snow-idle { opacity: 0; scale: 0.25; filter: blur(4px); transition-delay: 0s; }
+.lunato-snow .lunato-snow-idle, .lunato-snow[data-busy] .lunato-snow-busy { opacity: 1; scale: 1; filter: none; transition-delay: 140ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-snow::before, .lunato-snow::after, .lunato-snow-flurry { animation: none; }
+  .lunato-snow > .lunato-snow-idle, .lunato-snow > .lunato-snow-busy, .lunato-snow[data-busy] > .lunato-snow-idle { transition: opacity 160ms; scale: 1; filter: none; } /* the busy arrow's own selector, so it wins */
+}
+
+/* SendVoice, from send-voice.tsx.
+   While it waits for a voice, its three bars breathe out of step, 1.4s a cycle, each stretching from its middle, so
+   it reads as ready to listen rather than loading. While it listens they dance: twice as fast and from 35% to their
+   full height, the way a level meter jumps to a voice. Reduced motion: the bars hold still, and listening lifts them
+   to full height. */
+.lunato-voice[data-voice] line { transform-box: fill-box; transform-origin: center; animation: lunato-voice-breathe 1.4s cubic-bezier(0.37, 0, 0.63, 1) infinite; }
+.lunato-voice[data-voice] line:nth-child(2) { animation-delay: -0.47s; }
+.lunato-voice[data-voice] line:nth-child(3) { animation-delay: -0.93s; }
+.lunato-voice[data-listening] line { animation-name: lunato-voice-listen; animation-duration: 0.7s; }
+@keyframes lunato-voice-breathe { 0%, 100% { scale: 1 0.7; } 50% { scale: 1 1; } }
+@keyframes lunato-voice-listen { 0%, 100% { scale: 1 0.35; } 50% { scale: 1 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-voice[data-voice] line { animation: none; scale: 1 0.7; }
+  .lunato-voice[data-listening] line { scale: 1 1; }
+}
+
+/* SourceChips, from source-chips.tsx.
+   A new badge rises 4px out of a 2px blur over 360ms, 50ms after the new badge before it. Reduced motion keeps the fade. */
+.lunato-badge-in { transition: opacity 360ms cubic-bezier(0.2, 0, 0, 1), translate 360ms cubic-bezier(0.2, 0, 0, 1), filter 360ms cubic-bezier(0.2, 0, 0, 1); transition-delay: calc(var(--i) * 50ms); }
+@starting-style { .lunato-badge-in { opacity: 0; translate: 0 4px; filter: blur(2px); } }
+@media (prefers-reduced-motion: reduce) { .lunato-badge-in { transition-property: opacity; } }
+
+/* SourceStack, from source-stack.tsx.
+   Older circles sit on top, so a new one tucks under the last. It grows in place from 60% as its box opens from none
+   of its width to all of it (a negative right margin easing to zero: its full 18px first, 18 less the 5px overlap
+   after), so nothing beside it ever jumps. Hover or focus fans the stack from 5px of overlap to 2px apart and raises
+   the circle under the pointer, whose name shows after a short wait, as a native tooltip does, and goes at once.
+   Reduced motion keeps the fades and drops the movement. */
+.lunato-stack-item { z-index: var(--z); transition: margin 360ms cubic-bezier(0.2, 0, 0, 1), scale 360ms cubic-bezier(0.2, 0, 0, 1), opacity 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-stack-item + .lunato-stack-item { margin-left: -5px; }
+@starting-style {
+  .lunato-stack-item { margin-right: -18px; scale: 0.6; opacity: 0; }
+  .lunato-stack-item + .lunato-stack-item { margin-right: -13px; }
+}
+.lunato-stack ul:has(:focus-visible) .lunato-stack-item + .lunato-stack-item { margin-left: 2px; }
+.lunato-stack-item:has(:focus-visible) { z-index: 20; }
+.lunato-stack-tip { position: absolute; left: 50%; bottom: calc(100% + 6px); translate: -50% 2px; padding: 3px 6px; border-radius: 6px; corner-shape: squircle; background: oklch(0.205 0 0); color: #fff; font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1), translate 120ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-stack-item:has(:focus-visible) .lunato-stack-tip { opacity: 1; translate: -50% 0; }
+@media (hover: hover) {
+  .lunato-stack ul:hover .lunato-stack-item + .lunato-stack-item { margin-left: 2px; }
+  .lunato-stack-item:hover { z-index: 20; }
+  .lunato-stack-item:hover .lunato-stack-tip { opacity: 1; translate: -50% 0; transition-delay: 250ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunato-stack-item { transition-property: opacity; }
+  .lunato-stack-tip { transition-property: opacity; }
+}
+
+/* SourceTrail, from source-trail.tsx.
+   The orbit: 36 by 10 units, one lap every 6s at speed 1. Across and down each swing half a lap on an ease-in-out that
+   stands in for a sine, down a quarter lap behind, which traces the ellipse; each slot starts a sixth of a lap further
+   on. Depth rides on down: small and faint behind, full in front, and stacked by it too, so where two moons cross or
+   one passes the planet the nearer one is drawn over the other. The planet sits at the middle depth, and the orbit
+   holder is isolated so these depths never reach past the component. A new moon grows out of the planet onto its
+   place on the spring. Done, the orbit shrinks into the planet as it fades, and the planet grows into the count once
+   the orbit has started to go. The count is sized for two digits. Reduced motion parks the moons in their slots and
+   keeps the fades. */
+.lunato-trail-ring { width: 44px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1px currentColor; opacity: 0.25; }
+.lunato-trail-in { --half: calc(3s / var(--lunato-speed, 1)); --phase: calc(var(--p) * var(--half) * -2 / 6); transition: scale 360ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 160ms cubic-bezier(0.2, 0, 0, 1); }
+@starting-style { .lunato-trail-in { scale: 0; opacity: 0; } }
+.lunato-trail-in, .lunato-trail-x, .lunato-trail-y, .lunato-trail-moon { animation: var(--half) cubic-bezier(0.37, 0, 0.63, 1) infinite alternate; }
+.lunato-trail-x { animation-name: lunato-trail-x; animation-delay: var(--phase); }
+.lunato-trail-in, .lunato-trail-y, .lunato-trail-moon { animation-delay: calc(var(--half) / -2 + var(--phase)); }
+.lunato-trail-in { animation-name: lunato-trail-z; }
+.lunato-trail-y { animation-name: lunato-trail-y; }
+.lunato-trail-moon { animation-name: lunato-trail-depth; }
+@keyframes lunato-trail-x { from { translate: -18px 0; } to { translate: 18px 0; } }
+@keyframes lunato-trail-y { from { translate: 0 -5px; } to { translate: 0 5px; } }
+@keyframes lunato-trail-depth { from { scale: 0.7; opacity: 0.5; } to { scale: 1; opacity: 1; } }
+@keyframes lunato-trail-z { from { z-index: 0; } to { z-index: 4; } }
+.lunato-trail-orbit { transition: scale 360ms cubic-bezier(0.2, 0, 0, 1), opacity 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-trail[data-done] .lunato-trail-orbit { scale: 0; opacity: 0; }
+.lunato-trail-core { z-index: 2; display: grid; place-items: center; width: 6px; height: 6px; border-radius: 999px; background: oklch(0.205 0 0); color: #fff; font-size: 10px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; overflow: hidden; transition: width 360ms cubic-bezier(0.34, 1.56, 0.64, 1), height 360ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.lunato-trail-core > span { opacity: 0; transition: opacity 160ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-trail[data-done] .lunato-trail-core { width: 18px; height: 18px; transition-delay: 140ms; }
+.lunato-trail[data-done] .lunato-trail-core > span { opacity: 1; transition-delay: 260ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-trail-in, .lunato-trail-x, .lunato-trail-y, .lunato-trail-moon { animation-play-state: paused; }
+  .lunato-trail-in, .lunato-trail-orbit, .lunato-trail-core { transition-property: opacity; }
+}
+
+/* ThinkingShimmer, from thinking-shimmer.tsx.
+   A soft band of ink, fading to nothing 15% of the gradient either side of its middle, glides across the muted words
+   and off, 2s a pass, at an even speed so pass follows pass without a seam: the band is clear of the words at both
+   ends of the loop. A status change slides the old line up 60% of its height and fades it under a 2px blur over
+   220ms while the new one rises from 60% below over 260ms, 40ms behind, so they cross rather than stack. Reduced
+   motion: no shimmer, and the lines simply cross-fade. */
+.lunato-shimmer { background: linear-gradient(90deg, oklch(0.556 0 0) 0 35%, oklch(0.205 0 0) 50%, oklch(0.556 0 0) 65% 100%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lunato-shimmer 2000ms linear infinite; }
+@keyframes lunato-shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.lunato-shimmer-line { animation: lunato-shimmer-in 260ms cubic-bezier(0.2, 0, 0, 1) 40ms backwards; transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), translate 220ms cubic-bezier(0.2, 0, 0, 1), filter 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-shimmer-line[data-leaving] { opacity: 0; translate: 0 -60%; filter: blur(2px); }
+@keyframes lunato-shimmer-in { from { opacity: 0; translate: 0 60%; filter: blur(2px); } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-shimmer { animation: none; background: none; color: inherit; }
+  .lunato-shimmer-line { animation-name: lunato-shimmer-fade; transition-property: opacity; }
+  .lunato-shimmer-line[data-leaving] { translate: none; filter: none; }
+}
+@keyframes lunato-shimmer-fade { from { opacity: 0; } }
+
+/* ThinkingIndicator, from thinking-indicator.tsx.
+   The two marks share one cell and never show together: the outgoing one shrinks and blurs away at once, the incoming
+   one waits 140ms before it grows in. Reduced motion keeps only the fade. */
+.lunato-thinking-loader, .lunato-thinking-done { grid-area: 1 / 1; transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), scale 220ms cubic-bezier(0.2, 0, 0, 1), filter 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-thinking .lunato-thinking-done, .lunato-thinking[data-done] .lunato-thinking-loader { opacity: 0; scale: 0.25; filter: blur(4px); transition-delay: 0s; }
+.lunato-thinking .lunato-thinking-loader, .lunato-thinking[data-done] .lunato-thinking-done { opacity: 1; scale: 1; filter: none; transition-delay: 140ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-thinking-loader, .lunato-thinking-done { transition-property: opacity; }
+  .lunato-thinking .lunato-thinking-done, .lunato-thinking[data-done] .lunato-thinking-loader { scale: 1; filter: none; }
+}
+
+/* ThinkingPhases, from thinking-phases.tsx.
+   Each phase an 18px track, 4px tall and fully round. A finished one fills with ink from the left over 400ms; the one
+   under way carries a bar a third of its width that slides across and back every 1.2s, showing work without claiming
+   progress. A run stopped short pauses that bar where it was and greys it. Reduced motion: the running bar holds at
+   the start, at half strength. */
+.lunato-phase { position: relative; overflow: hidden; width: 18px; height: 4px; border-radius: 9999px; background: oklch(0.922 0 0); }
+.lunato-phase i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: oklch(0.205 0 0); transition: width 400ms cubic-bezier(0.2, 0, 0, 1), background-color 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-phase[data-state="done"] i { width: 100%; }
+.lunato-phase:is([data-state="now"], [data-state="stopped"]) i { width: 34%; background: oklch(0.556 0 0); animation: lunato-phase-work 1.2s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate; }
+.lunato-phase[data-state="stopped"] i { background: oklch(0.708 0 0); animation-play-state: paused; }
+@keyframes lunato-phase-work { from { translate: 0 0; } to { translate: 194% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-phase i { transition: none; }
+  .lunato-phase:is([data-state="now"], [data-state="stopped"]) i { animation: none; opacity: 0.5; }
+}
+
+/* ThinkingThoughts, from thinking-thoughts.tsx.
+   The line's marks swap as ThinkingIndicator's do (its rules above). Its chevron turns a quarter to point down as
+   the reasoning opens. The reasoning unfolds from nothing (0fr to 1fr) over 240ms while it drops 4px into place out
+   of a light blur, and folds back the same way; closed, it is hidden from reading and tabbing. Scrolled back, its top
+   fades over 20px, so a line cut at the edge reads as more above. Reduced motion: it opens and closes at once. */
+.lunato-thoughts-chevron { transition: rotate 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-thoughts[data-open] .lunato-thoughts-chevron { rotate: 90deg; }
+.lunato-thoughts-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-thoughts[data-open] .lunato-thoughts-fold { grid-template-rows: 1fr; }
+.lunato-thoughts-body { opacity: 0; translate: 0 -4px; filter: blur(2px); visibility: hidden; transition: opacity 180ms cubic-bezier(0.2, 0, 0, 1), translate 180ms cubic-bezier(0.2, 0, 0, 1), filter 180ms cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 240ms; }
+.lunato-thoughts[data-open] .lunato-thoughts-body { opacity: 1; translate: none; filter: none; visibility: visible; transition-duration: 240ms, 240ms, 240ms, 0s; transition-delay: 40ms, 40ms, 40ms, 0s; }
+.lunato-thoughts-body[data-scrolled] { mask-image: linear-gradient(transparent, #000 20px); }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-thoughts-fold, .lunato-thoughts-body, .lunato-thoughts-chevron { transition: none; }
+}
+
+/* ThinkingSteps, from thinking-steps.tsx.
+   A new step: its row opens from nothing to full height (0fr to 1fr) while its content rises 4px out of a light blur,
+   a beat behind, so it comes into room already there. The line under a step draws down from it once a step follows.
+   The icons share one cell and never show together: the outgoing one shrinks and blurs away at once, the incoming
+   one waits 140ms before it grows in. Reduced motion keeps the fades and drops the movement. */
+.lunato-step { position: relative; display: grid; grid-template-rows: 1fr; transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-step-row { min-height: 0; overflow: hidden; transition: opacity 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, translate 360ms cubic-bezier(0.2, 0, 0, 1) 80ms, filter 360ms cubic-bezier(0.2, 0, 0, 1) 80ms; }
+@starting-style {
+  .lunato-step { grid-template-rows: 0fr; }
+  .lunato-step-row { opacity: 0; translate: 0 4px; filter: blur(2px); }
+}
+.lunato-step::after { content: ""; position: absolute; left: 5.5px; top: calc(100% - 2px); width: 1px; height: 8px; background: oklch(0.922 0 0); transform-origin: top; transition: scale 360ms cubic-bezier(0.2, 0, 0, 1) 80ms; }
+.lunato-step:last-child::after { scale: 1 0; }
+.lunato-step-loader, .lunato-step-done { grid-area: 1 / 1; transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), scale 220ms cubic-bezier(0.2, 0, 0, 1), filter 220ms cubic-bezier(0.2, 0, 0, 1); }
+.lunato-step .lunato-step-loader, .lunato-step[data-running] .lunato-step-done { opacity: 0; scale: 0.25; filter: blur(4px); transition-delay: 0s; }
+.lunato-step .lunato-step-done, .lunato-step[data-running] .lunato-step-loader { opacity: 1; scale: 1; filter: none; transition-delay: 140ms; }
+@keyframes lunato-running { 0%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+.lunato-dots line { animation: lunato-running 1s cubic-bezier(0.2, 0, 0, 1) infinite; }
+.lunato-dots line:nth-child(2) { animation-delay: 160ms; }
+.lunato-dots line:nth-child(3) { animation-delay: 320ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lunato-step, .lunato-step::after { transition: none; }
+  .lunato-step-row { translate: none; filter: none; transition-property: opacity; }
+  .lunato-step-loader, .lunato-step-done { transition-property: opacity; }
+  .lunato-step .lunato-step-loader, .lunato-step[data-running] .lunato-step-done { scale: 1; filter: none; }
+  .lunato-dots line { animation: none; }
+}
+
+/* TokenCells, from token-cells.tsx.
+   The glint: a soft band of light slides down each lit cell, each a beat after the one before, so it reads as one
+   wave crossing the row. Reduced motion leaves the cells plain. */
+.lunato-cell-live { background-image: linear-gradient(180deg, transparent 30%, rgb(255 255 255 / 0.55) 50%, transparent 70%); background-repeat: no-repeat; background-size: 100% 260%; background-position: 0 180%; animation: lunato-cell-glint 2600ms linear calc(var(--i) * 140ms) infinite; }
+@keyframes lunato-cell-glint { 0% { background-position: 0 180%; } 40%, 100% { background-position: 0 -180%; } }
+@media (prefers-reduced-motion: reduce) { .lunato-cell-live { animation: none; background-image: none; } }

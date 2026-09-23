@@ -23,10 +23,12 @@
     "solid"
   ],
   "sideEffects": [
-    "./dist/element.js"
+    "./dist/element.js",
+    "./vault.css"
   ],
   "files": [
     "dist",
+    "vault.css",
     "README.md",
     "LICENSE"
   ],
@@ -43,7 +45,8 @@
     "./solid": {
       "types": "./dist/solid.d.ts",
       "import": "./dist/solid.js"
-    }
+    },
+    "./vault.css": "./vault.css"
   },
   "scripts": {
     "prepack": "npm run build",

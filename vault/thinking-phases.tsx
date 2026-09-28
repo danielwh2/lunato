@@ -50,7 +50,7 @@ export function ThinkingPhases({
           </span>
         ))}
       </span>
-      <span aria-hidden ref={morphChanges} className="text-neutral-900">
+      <span aria-hidden ref={morphChanges} data-lunato="roll" className="text-neutral-900">
         {done ? "Done in" : stopped ? "Stopped after" : phases[now]}
       </span>
       <span aria-hidden ref={morphChanges} className="-ml-1 tabular-nums text-neutral-400">

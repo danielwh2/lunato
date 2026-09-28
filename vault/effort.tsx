@@ -72,7 +72,7 @@ export function EffortWord({ levels, label }: { levels: Effort[]; label: string 
           {l.label}
         </span>
       ))}
-      <span ref={morphChanges} className="lunato-effort-word [grid-area:1/1]">
+      <span ref={morphChanges} data-lunato="roll" className="lunato-effort-word [grid-area:1/1]">
         {label}
       </span>
     </span>

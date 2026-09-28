@@ -44,7 +44,7 @@ export function SendLabel({
       {...press(busy, onSend, onStop)}
       className={`inline-flex h-[var(--lunato-size,28px)] flex-none cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[var(--lunato-radius,12px)] border-0 bg-neutral-900 pl-2.5 pr-1 text-[12px] font-medium leading-none text-white transition-[scale,opacity] duration-150 [corner-shape:var(--lunato-corner,squircle)] active:scale-[0.96] disabled:cursor-default disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 data-pointer:focus-visible:outline-none motion-reduce:transition-none ${className}`}
     >
-      <span ref={morphChanges}>{busy ? "Stop" : "Send"}</span>
+      <span ref={morphChanges} data-lunato="roll">{busy ? "Stop" : "Send"}</span>
       <kbd
         ref={morphChanges}
         aria-hidden

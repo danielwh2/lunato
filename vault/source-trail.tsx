@@ -66,7 +66,7 @@ export function SourceTrail({
           <span ref={morphChanges}>{sources.length}</span>
         </span>
       </span>
-      <span ref={morphChanges}>{status}</span>
+      <span ref={morphChanges} data-lunato="roll">{status}</span>
       <span className="sr-only">{newest && !done ? `Found ${newest.title}` : ""}</span>
     </span>
   );

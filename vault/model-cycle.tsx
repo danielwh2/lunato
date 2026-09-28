@@ -43,7 +43,7 @@ export function ModelCycle({
       <span ref={morphChanges} className="grid [&_svg]:size-3">
         {current.icon}
       </span>
-      <span ref={morphChanges}>{current.label}</span>
+      <span ref={morphChanges} data-lunato="roll">{current.label}</span>
       <span aria-hidden className="ml-0.5 flex items-center gap-[3px]">
         {models.map((m, i) => (
           <span

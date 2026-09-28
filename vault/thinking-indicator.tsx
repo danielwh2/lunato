@@ -49,7 +49,7 @@ export function ThinkingIndicator({
         <span className="lunato-thinking-loader grid">{loader}</span>
         <span className="lunato-thinking-done grid">{stopped ? <Cross /> : doneMark}</span>
       </span>
-      <span ref={morphChanges}>{status}</span>
+      <span ref={morphChanges} data-lunato="roll">{status}</span>
     </span>
   );
 }

@@ -173,7 +173,7 @@ export function PromptHint({
 }) {
   return (
     <span
-      ref={morphChanges}
+      ref={morphChanges} data-lunato="roll"
       aria-hidden
       style={style}
       className={`pointer-events-none absolute overflow-x-clip whitespace-nowrap text-base text-neutral-400 transition-[opacity,filter] duration-150 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none ${hidden ? "opacity-0 blur-[2px]" : ""} ${className}`}

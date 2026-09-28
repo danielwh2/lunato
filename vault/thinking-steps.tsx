@@ -55,7 +55,7 @@ export function ThinkingSteps({
                 </span>
               </span>
               <span
-                ref={morphChanges}
+                ref={morphChanges} data-lunato="roll"
                 className={`transition-colors duration-150 ${running ? "text-neutral-900" : "text-neutral-500"}`}
               >
                 {step}

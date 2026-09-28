@@ -75,7 +75,7 @@ export function SourceStack({
       </ul>
       {status !== undefined && (
         <span
-          ref={morphChanges}
+          ref={morphChanges} data-lunato="roll"
           className="whitespace-nowrap text-[12px] font-medium text-neutral-500"
         >
           {status}

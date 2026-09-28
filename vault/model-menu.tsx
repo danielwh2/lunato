@@ -117,7 +117,7 @@ export function ModelMenu({
           </span>
         )}
         <span className="inline-flex items-center">
-          <span ref={morphChanges}>{current.label}</span>
+          <span ref={morphChanges} data-lunato="roll">{current.label}</span>
           {onFastChange && (
             <span
               className={`grid transition-[grid-template-columns] duration-220 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none ${fast ? "grid-cols-[1fr]" : "grid-cols-[0fr]"}`}

@@ -55,7 +55,7 @@ export function EffortChip({
         ))}
         <MaxBurst on={at === last} feedback={atMax} />
       </span>
-      <span ref={morphChanges}>{level.label}</span>
+      <span ref={morphChanges} data-lunato="roll">{level.label}</span>
       {level.hint && (
         <span ref={morphChanges} className="tabular-nums text-neutral-400">
           {level.hint}

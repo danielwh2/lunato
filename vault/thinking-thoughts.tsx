@@ -75,7 +75,7 @@ export function ThinkingThoughts({
             {done || !stopped ? <Check /> : <Cross />}
           </span>
         </span>
-        <span ref={morphChanges}>{label}</span>
+        <span ref={morphChanges} data-lunato="roll">{label}</span>
         <svg
           aria-hidden
           width="10"

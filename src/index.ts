@@ -1,5 +1,6 @@
 import { pair } from "./diff.js";
 import { hideCollapsed, isLineIcon, morphIcon } from "./lines.js";
+import { planRoll, type Roll, wordsOf } from "./roll.js";
 import { collect, trendOf, type Unit } from "./units.js";
 import {
   BLUR,
@@ -8,6 +9,7 @@ import {
   EXIT_CLEAR,
   FEATHER,
   FIT_GROW,
+  FIT_MS,
   ICON_BLUR,
   ICON_SHRINK,
   LANDED,
@@ -36,6 +38,13 @@ const KEYS = ["opacity", "translate", "scale", "rotate", "filter"] as const;
  * search and selection, and its CSS sets the look.
  *
  * Returns a function that removes the effect and puts the element back as it was.
+ *
+ * Mark the element `data-lunato="roll"` for the word roll instead: words pair by position, as slot-text rolls, and each
+ * changed word rises away as its replacement bubbles up from below. Made for statuses and thinking states. It reads the
+ * mark at every change, so it can be set or cleared at any time; text on more than one line always morphs.
+ *
+ * `data-lunato-feel="calm"` keeps either one and drops the play: no overshoot, and in the roll no bubble, lean or bob.
+ * Playful, the default, is what it is without the mark.
  *
  * That shape, element in and cleanup out, is what React 19 refs and Svelte 5 attachments call, so the
  * function is its own adapter there: `<span ref={morphChanges}>` and `<span {@attach morphChanges}>`. `null`
@@ -163,8 +172,10 @@ export function morphChanges(target: string | Element | null): () => void {
   /** The units, and, on `animate`, how each one got there; otherwise everything is simply put where it now is. */
   const render = (animate: boolean) => {
     attach();
-    // The fit pins the width; it lets go first so the reads below see the natural layout.
-    const fromWidth = fitting ? parseFloat(style.width) || width : width;
+    // The fit pins the width; it lets go first so the reads below see the natural layout. It pins it only while it is in
+    // effect: once it has played out, the width on screen is the settled one, even if its promise has not yet resolved.
+    const pinned = fitting?.effect?.getComputedTiming().progress != null;
+    const fromWidth = pinned ? parseFloat(style.width) || width : width;
     if (fitting) {
       fitting.cancel();
       fitting = undefined;
@@ -177,9 +188,15 @@ export function morphChanges(target: string | Element | null): () => void {
     // Rects arrive in screen pixels, scaled by any transform on the element or around it: a card squashed while it is
     // pressed, say. Everything is measured in the element's own unscaled pixels instead, or a change made mid-press
     // places every glyph a few percent off and the glides that follow correct it, which reads as jitter.
+    // The unscaled size comes from the computed style: offsetWidth rounds to a whole pixel, which would put every glyph
+    // up to half a pixel out, by an amount that changes whenever the width does, so kept glyphs would shimmer as text grows.
     // ponytail: scale only; a rotated ancestor still skews these.
-    const sx = host.offsetWidth ? frame.width / host.offsetWidth : 1;
-    const sy = host.offsetHeight ? frame.height / host.offsetHeight : 1;
+    const exact = (size: string, ...edges: string[]) =>
+      parseFloat(size) + (style.boxSizing === "border-box" ? 0 : edges.reduce((sum, edge) => sum + (parseFloat(edge) || 0), 0));
+    const boxWidth = exact(style.width, style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth) || host.offsetWidth;
+    const boxHeight = exact(style.height, style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth) || host.offsetHeight;
+    const sx = boxWidth ? frame.width / boxWidth : 1;
+    const sy = boxHeight ? frame.height / boxHeight : 1;
     const local = (r: DOMRect): DOMRect => {
       const left = (r.left - frame.left) / sx - host.clientLeft;
       const top = (r.top - frame.top) / sy - host.clientTop;
@@ -232,7 +249,21 @@ export function morphChanges(target: string | Element | null): () => void {
     const trend = trendOf(text, nextText);
     text = nextText;
 
-    const pairs = pair(live, next);
+    // The word roll: only on one line, before and after, and never under reduced motion, which crossfades either way.
+    const wasOneLine = was.every((r) => Math.abs(r.top - was[0].top) < r.height / 2);
+    const calmFeel = host.dataset.lunatoFeel === "calm";
+    const label = (u: Unit) => (u.node ? u.node.outerHTML : u.text);
+    const roll: Roll | undefined =
+      animate && !still && oneLine && wasOneLine && host.dataset.lunato === "roll"
+        ? planRoll(
+            wordsOf(live, label, (o) => was[o]),
+            wordsOf(next, label, (n) => next[n].rect),
+            size,
+            calmFeel,
+          )
+        : undefined;
+    const pairs = roll ? roll.pairs : pair(live, next);
+    const ease = calmFeel ? SETTLE : SPRING;
     const kept = new Map(pairs.map(([o, n]) => [n, o]));
     const leaving = live.map((_, o) => o).filter((o) => !pairs.some(([p]) => p === o));
     // A kept digit slot whose value changed rolls in place: its old face leaves as the new one arrives.
@@ -310,13 +341,28 @@ export function morphChanges(target: string | Element | null): () => void {
         box.remove();
         continue;
       }
+      const rolled = roll?.leave.get(o);
+      if (rolled) {
+        // It leaves from where it is: any glide in flight stops there, and a face still moving blends from its pose.
+        const moving = f.getAnimations().length > 0;
+        clear(box);
+        clear(f);
+        place(box, { ...live[o], rect: was[o] }, origin);
+        f.style.transformOrigin = `${rolled.centre - was[o].left}px 55%`;
+        const frames = moving ? [{ ...rolled.frames[0], ...now[o] }, ...rolled.frames.slice(1)] : rolled.frames;
+        run(f, frames, rolled.ms, 0, "linear", "forwards").finished.then(
+          () => box.remove(),
+          () => box.remove(),
+        );
+        continue;
+      }
       clear(f); // the box keeps any glide it has, and the ghost drifts on while it fades
       const out = run(
         f,
         exit(now[o], live[o], -trend, still),
         ROLL_MS,
         still ? 0 : exitAt(o),
-        SPRING,
+        ease,
         "forwards",
       );
       out.finished.then(
@@ -329,13 +375,25 @@ export function morphChanges(target: string | Element | null): () => void {
       const o = kept.get(n);
       if (o === undefined) {
         const l = make(unit, origin);
+        const rolled = roll?.arrive.get(n);
+        if (rolled) {
+          // Every glyph of the word turns and scales about the word's centre, so the word moves as one piece.
+          l.face.style.transformOrigin = `${rolled.centre - unit.rect.left}px 55%`;
+          run(l.face, rolled.frames, rolled.ms, 0, "linear", "backwards").finished.then(
+            () => (l.face.style.transformOrigin = ""),
+            () => {},
+          );
+          return l;
+        }
+        // A glyph arrives a box away from what leaves; an icon grows in place, so it waits for what leaves to fade.
+        const clear = unit.kind === "icon" && leaving.length ? ROLL_MS * ROOM : 0;
         if (animate)
           run(
             l.face,
             enter(unit, trend, still),
             ROLL_MS,
-            still ? 0 : landAt + enterAt(n),
-            SPRING,
+            still ? 0 : landAt + enterAt(n) + clear,
+            ease,
             "backwards",
           );
         return l;
@@ -362,13 +420,13 @@ export function morphChanges(target: string | Element | null): () => void {
             exit(now[o], old, -trend, still),
             ROLL_MS,
             delay,
-            SPRING,
+            ease,
             "forwards",
           ).finished.then(
             () => leavingFace.remove(),
             () => leavingFace.remove(),
           );
-          run(f, enter(unit, trend, still), ROLL_MS, delay, SPRING, "backwards");
+          run(f, enter(unit, trend, still), ROLL_MS, delay, ease, "backwards");
         }
       }
       place(old.box, unit, origin);
@@ -409,8 +467,8 @@ export function morphChanges(target: string | Element | null): () => void {
         run(
           old.box,
           [{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }],
-          ROLL_MS,
-          roomAt,
+          roll ? FIT_MS : ROLL_MS,
+          roll ? roll.lag : roomAt,
           SETTLE,
           "backwards",
         );
@@ -431,9 +489,10 @@ export function morphChanges(target: string | Element | null): () => void {
       host.style.whiteSpace = "nowrap"; // a box narrower than its text mid-fit must not wrap it onto a second line
       // The box never cuts a letter that is still showing. Growing, it reaches its new width ahead of the letters
       // arriving at its edge; shrinking, it holds its width until the letters leaving it have faded, then closes.
+      // Rolling, it eases with every word's room, on the same curve.
       const growing = toWidth > fromWidth;
-      const hold = growing ? 0 : ROLL_MS * EXIT_CLEAR;
-      const span = growing ? ROLL_MS * FIT_GROW : Math.max(total - hold, ROLL_MS * FIT_GROW);
+      const hold = roll ? roll.lag : growing ? 0 : ROLL_MS * EXIT_CLEAR;
+      const span = roll ? FIT_MS : growing ? ROLL_MS * FIT_GROW : Math.max(total - hold, ROLL_MS * FIT_GROW);
       const fit = (fitting = run(
         host,
         [{ width: `${fromWidth}px` }, { width: `${toWidth}px` }],

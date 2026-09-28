@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { morphChanges, vMorphChanges } from "../src/index";
 import "../src/element";
-import { EDGE, ENTER_FROM, EXIT_CLEAR, FIT_GROW, LANDED, ROLL_MS, ROOM, SPREAD } from "../src/tokens";
+import { EDGE, ENTER_FROM, EXIT_CLEAR, FIT_GROW, LANDED, ROLL_MS, ROOM, SETTLE, SPREAD } from "../src/tokens";
 
 // happy-dom has no layout and no Web Animations. A glyph measures as a 10px box at its offset in its text, a drawn
 // copy as the box its inline style puts it in, and each animate() call is recorded so a test can read what moved.
@@ -254,6 +254,42 @@ describe("morphChanges", () => {
     await mutation();
     expect(glides()).toHaveLength(0);
     expect(arrivals()[0].options.delay).toBe(0);
+  });
+
+  it("rolls word by word when marked data-lunato=\"roll\": each glyph of a word moves as one piece", async () => {
+    const el = label("Reading 4 sources");
+    el.dataset.lunato = "roll";
+    morphChanges(el);
+    el.textContent = "Reading 9 sources";
+    await mutation();
+    const baked = calls.filter((c) => c.options.easing === "linear");
+    expect(baked.map((c) => c.el.textContent)).toEqual(["4", "9"]); // only the changed word, leaving and arriving
+    expect(baked[1].frames[0].opacity).toBe(0); // it bubbles up from out of sight
+    expect(baked[1].frames.at(-1)).toMatchObject({ opacity: 1, translate: "0px 0px", scale: "1 1" });
+
+    calls.length = 0;
+    el.textContent = "Thought for 8s";
+    await mutation();
+    const into = calls.filter((c) => c.options.easing === "linear" && c.frames[0].opacity === 0);
+    expect(into.map((c) => c.el.textContent).join("")).toBe("Thoughtfor8s");
+    expect(new Set(into.slice(0, 7).map((c) => c.frames)).size).toBe(1); // one set of keyframes for all of "Thought"
+    expect(into[7].frames).not.toBe(into[0].frames); // "for" has its own, a beat later
+
+    calls.length = 0;
+    delete el.dataset.lunato; // cleared, it morphs again
+    el.textContent = "Thinking";
+    await mutation();
+    expect(calls.some((c) => c.options.easing === "linear")).toBe(false);
+  });
+
+  it("drops the overshoot everywhere when marked data-lunato-feel=\"calm\"", async () => {
+    const el = label("Copy");
+    el.dataset.lunatoFeel = "calm";
+    morphChanges(el);
+    el.textContent = "Copied";
+    await mutation();
+    expect(rolls().length).toBeGreaterThan(0);
+    for (const c of rolls()) expect(c.options.easing).toBe(SETTLE);
   });
 
   it("only crossfades under reduced motion", async () => {

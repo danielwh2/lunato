@@ -27,7 +27,23 @@ morphChanges(target: string | Element | null): () => void
 - `target`: an element or a CSS selector. `null` is ignored, so the function can be passed straight to a ref.
 - Returns a function that stops watching and puts the element back as it was.
 - Binding the same element again replaces the first binding. Safe with StrictMode, hot reload and server imports.
-- There are no options. The element's own CSS is the look.
+- The element's own CSS is the look. The one choice is how it moves: add `data-lunato="roll"` for the word roll below.
+
+### Word roll
+
+```tsx
+<span ref={morphChanges} data-lunato="roll" aria-live="polite">{status}</span>
+```
+
+Words pair by position, as slot-text rolls, and each word that changed rises away as its replacement bubbles up from below, springs a little past its place and bobs upright. Made for thinking states and statuses, where whole words change. The mark is read at every change, so it can be set or cleared at any time. Text on more than one line always morphs; reduced motion crossfades either way.
+
+### Feel
+
+```tsx
+<span ref={morphChanges} data-lunato="roll" data-lunato-feel="calm">{status}</span>
+```
+
+Playful is the default: the roll bubbles, leans and bobs, and the morph lands with a small overshoot. `data-lunato-feel="calm"` keeps the same motion without the play: words rise in and out whole, at their own size and upright, on an ease with no overshoot. It works with the morph too.
 
 ## Frameworks
 

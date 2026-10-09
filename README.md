@@ -27,6 +27,8 @@ morphChanges(target: string | Element | null): () => void
 - `target`: an element or a CSS selector. `null` is ignored, so the function can be passed straight to a ref.
 - Returns a function that stops watching and puts the element back as it was.
 - Binding the same element again replaces the first binding. Safe with StrictMode, hot reload and server imports.
+- Where it can't run (an older browser, the server, jsdom) it does nothing and the text shows as written.
+- An element removed from the page without being unbound drops its listeners on the page, so it can be collected.
 - The element's own CSS is the look. The one choice is how it moves: add `data-lunato="roll"` for the word roll below.
 
 ### Word roll
@@ -56,10 +58,39 @@ Playful is the default: the roll bubbles, leans and bobs, and the morph lands wi
 
 In Vue, `vMorphChanges` registers by name in `<script setup>`, or app-wide with `app.directive("morph-changes", vMorphChanges)`.
 
+React 18 never calls a ref's cleanup, so bind in an effect there:
+
+```tsx
+const ref = useRef<HTMLSpanElement>(null);
+useEffect(() => morphChanges(ref.current), []);
+
+<span ref={ref}>{price}</span>
+```
+
+In Next.js's App Router, bind from a client component (`"use client"`): a ref is a function, and a server component can't pass one.
+
+Svelte 4 has no attachments, so bind with an action:
+
+```svelte
+<script>
+  import { morphChanges } from "lunato";
+  const morph = (node) => ({ destroy: morphChanges(node) });
+</script>
+
+<span use:morph>{price}</span>
+```
+
 Anywhere else, use the element:
 
 ```html
 <script type="module">import "lunato/element";</script>
+<lunato-text>$240</lunato-text>
+```
+
+With no build step, load it from a CDN:
+
+```html
+<script type="module" src="https://unpkg.com/lunato/dist/element.js"></script>
 <lunato-text>$240</lunato-text>
 ```
 
@@ -147,23 +178,17 @@ Unchanged words hold still, however many edits sit between them.
 
 - **Text.** Unchanged words hold still. Inside a changed word, shared letters stay. Changes sweep left to right a word at a time. When kept words have to move, what leaves goes first, the rest glide into its room, and new words land last. A word pushed onto another line fades across instead of flying over the text.
 - **Numbers.** Digits pair by place value from the decimal point and roll. Falling numbers roll down.
-- **Emoji and icons.** Shrink and blur into the next one.
+- **Emoji and icons.** Shrink and blur into the next one. An icon redrawn where it is (a new `src`, a new path) counts as changed.
 - **Line icons.** An svg of up to three `<line>`s, with a `viewBox`, morphs into another, and turns when it is the same drawing rotated. After Benji Taylor's [Morphing icons with Claude](https://benji.org/morphing-icons-with-claude).
 - **Outline icons.** An svg of up to four simple shapes (path, rect, circle, ellipse, line, polyline, polygon) reshapes outline to outline, so a play triangle becomes two pause bars.
 
 ## Components
 
-The vault on lunato's site has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, streaming text and token meters. They are React 19 and Tailwind v4, to copy into your project and change as you like.
+The vault has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, streaming text and token meters. They are React 19 and Tailwind v4, to copy into your project and change as you like.
 
-They live in this repo under `vault/`, one file each with its sheet beside it. Their styles and motion come with lunato, in one stylesheet, `lunato/vault.css`, which each component imports itself. Install lunato and there is nothing else to set up.
+They live in this repo under [`vault/`](vault), one file each with its sheet beside it. Their styles and motion come with lunato, in one stylesheet, `lunato/vault.css`, which each component imports itself. Install lunato and there is nothing else to set up.
 
-Each component has three buttons. One copies the file as it is. One copies a [shadcn](https://ui.shadcn.com/docs/registry) command that installs it and any vault files it imports into `components/lunato/`, and adds lunato to your dependencies:
-
-```
-npx shadcn@latest add <vault>/r/ai-input.json
-```
-
-The third shows how to use it, as a small React component of your own:
+On lunato's site each component has three buttons. One copies the file as it is. One copies a [shadcn](https://ui.shadcn.com/docs/registry) command that installs it and any vault files it imports into `components/lunato/`, and adds lunato to your dependencies. The third shows how to use it, as a small React component of your own:
 
 ```tsx
 "use client";
@@ -188,8 +213,20 @@ The element's CSS is the look. Use `font-variant-numeric: tabular-nums` on numbe
 
 The real text stays in the DOM for screen readers, search and selection; the animation is an `aria-hidden` overlay. Add `aria-live="polite"` if a change should be announced. Reduced motion turns every change into a plain fade.
 
+A visually hidden label inside the element (`sr-only`) stays hidden, and so does anything `display: none`. A print shows the real text.
+
+## Browsers
+
+Chrome 113, Safari 17.2 and Firefox 112, or later: the ones with `linear()` easing. Anywhere else the text shows as written and nothing moves.
+
 ## Limits
 
+- Text is drawn in the element's own font and colour. A `<b>` or a coloured `<span>` inside it loses its style while bound, so bind the styled element itself.
+- `text-transform: capitalize` capitalises every letter, because each one is drawn on its own. `uppercase` is fine.
+- Joined scripts such as Arabic draw letter by letter, unjoined, and brackets in mixed-direction text can face the wrong way.
+- `::before` and `::after` text on the element hides with its glyphs. Give the pseudo-element `-webkit-text-fill-color: currentcolor`.
+- A bound `<span>` is given `display: inline-block`. Its own `class`, `style` and `hidden` can still hide it; a parent's state or a media query can't. Hide a wrapper there.
+- An element bound inside a bound element is drawn twice. Bind one or the other.
 - A rotation around the element skews the morph; a scale does not.
 - The width only eases on one-line text.
 - `text-shadow` and `text-decoration` paint under the animation.

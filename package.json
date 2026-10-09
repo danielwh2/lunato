@@ -5,7 +5,17 @@
   "type": "module",
   "license": "MIT",
   "author": "Daniel Belyi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielwh2/lunato.git"
+  },
+  "homepage": "https://github.com/danielwh2/lunato#readme",
+  "bugs": "https://github.com/danielwh2/lunato/issues",
   "keywords": [
+    "ai",
+    "llm",
+    "streaming",
+    "chat",
     "animation",
     "text",
     "morph",
@@ -30,28 +40,40 @@
   "files": [
     "dist",
     "vault.css",
+    "vault.css.d.ts",
     "vault/*.css",
     "README.md",
     "LICENSE"
   ],
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "element": ["./dist/element.d.ts"],
+      "solid": ["./dist/solid.d.ts"],
+      "vault.css": ["./vault.css.d.ts"]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./element": {
       "types": "./dist/element.d.ts",
-      "import": "./dist/element.js"
+      "default": "./dist/element.js"
     },
     "./solid": {
       "types": "./dist/solid.d.ts",
-      "import": "./dist/solid.js"
+      "default": "./dist/solid.js"
     },
-    "./vault.css": "./vault.css"
+    "./vault.css": {
+      "types": "./vault.css.d.ts",
+      "default": "./vault.css"
+    }
   },
   "scripts": {
     "prepack": "npm run build",
+    "prepublishOnly": "npm run check && npm test",
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit && tsc -p vault/tsconfig.json",
     "test": "vitest run",

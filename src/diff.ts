@@ -52,17 +52,25 @@ function words(p: Piece[]) {
 
 /**
  * The longest common subsequence of two lists, as index pairs in order.
- * ponytail: a full table, O(n × m); a caption or a paragraph is a few hundred words. Myers' diff if whole documents stream through.
+ * The shared start is walked, not tabled: text that streams in keeps everything up to its last word, so each token
+ * costs its own length, not the whole answer squared. The table would pair that start the same way.
+ * ponytail: past the first difference it is a full table, O(n × m); a caption or a paragraph is a few hundred words. Myers' diff if whole documents are rewritten from the top.
  */
 function common(a: string[], b: string[]): Pair[] {
-  const table = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
-  for (let i = a.length - 1; i >= 0; i--)
-    for (let j = b.length - 1; j >= 0; j--)
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) start++;
+  const out: Pair[] = Array.from({ length: start }, (_, k) => [k, k]);
+  const n = a.length - start;
+  const m = b.length - start;
+  const table = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--)
+    for (let j = m - 1; j >= 0; j--)
       table[i][j] =
-        a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
-  const out: Pair[] = [];
-  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
-    if (a[i] === b[j]) out.push([i++, j++]);
+        a[start + i] === b[start + j]
+          ? table[i + 1][j + 1] + 1
+          : Math.max(table[i + 1][j], table[i][j + 1]);
+  for (let i = 0, j = 0; i < n && j < m; ) {
+    if (a[start + i] === b[start + j]) out.push([start + i++, start + j++]);
     else if (table[i + 1][j] >= table[i][j + 1]) i++;
     else j++;
   }

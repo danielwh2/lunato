@@ -45,6 +45,8 @@ function label(html: string) {
 }
 const copies = (el: HTMLElement) => [...el.querySelector("[aria-hidden]")!.children].map((c) => c.textContent);
 const rolls = () => calls.filter((c) => "opacity" in c.frames[0]);
+// happy-dom drops -webkit-text-fill-color, so whether an element is dressed is read from the position it is given.
+const dressed = (el: HTMLElement) => el.style.position === "relative";
 
 describe("morphChanges", () => {
   it("draws a copy of every grapheme and keeps the real text in place", () => {
@@ -310,6 +312,186 @@ describe("morphChanges", () => {
     stop();
     expect(el.querySelector("[aria-hidden]")).toBeNull();
     expect(el.style.position).toBe("");
+
+    const moved = label("x");
+    const done = morphChanges(moved);
+    moved.style.position = "absolute"; // set since, by someone else: unbinding takes back only what is still its own
+    done();
+    expect(moved.style.position).toBe("absolute");
+  });
+
+  it("leaves a newer binding alone when an old stop is called late", () => {
+    const el = label("x");
+    const first = morphChanges(el);
+    morphChanges(el);
+    first();
+    expect(el.querySelectorAll("[aria-hidden]")).toHaveLength(1);
+    expect(dressed(el)).toBe(true);
+  });
+
+  it("leaves the element as it is where the effect cannot run: a browser without linear() easing", () => {
+    vi.stubGlobal("CSS", { supports: () => false });
+    const el = label("x");
+    const stop = morphChanges(el);
+    expect(el.querySelector("[aria-hidden]")).toBeNull();
+    expect(dressed(el)).toBe(false);
+    stop();
+  });
+
+  it("goes back to plain text if drawing fails, rather than leave stale copies over hidden glyphs", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const el = label("1");
+    morphChanges(el);
+    Element.prototype.animate = () => {
+      throw new TypeError("no");
+    };
+    el.textContent = "2";
+    await mutation();
+    expect(el.querySelector("[aria-hidden]")).toBeNull();
+    expect(dressed(el)).toBe(false);
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
+  });
+
+  it("prints the element's own text: the copies step aside for the paper's layout, and come back after", () => {
+    const el = label("x");
+    morphChanges(el);
+    const overlay = el.querySelector("[aria-hidden]") as HTMLElement;
+    const fill = vi.spyOn(el.style, "setProperty");
+    window.dispatchEvent(new Event("beforeprint"));
+    expect(overlay.style.display).toBe("none");
+    expect(fill).toHaveBeenLastCalledWith("-webkit-text-fill-color", "");
+    window.dispatchEvent(new Event("afterprint"));
+    expect(overlay.style.display).toBe("");
+    expect(fill).toHaveBeenLastCalledWith("-webkit-text-fill-color", "transparent");
+  });
+
+  it("reads no pose for a glyph that stays, so a long answer streams at the cost of its new words", async () => {
+    const el = label("Yes");
+    morphChanges(el);
+    const read = vi.spyOn(globalThis, "getComputedStyle");
+    el.textContent = "Yes if";
+    await mutation();
+    expect(read).not.toHaveBeenCalled();
+    el.textContent = "Yes";
+    await mutation();
+    expect(read).toHaveBeenCalledTimes(2); // "if" leaves from wherever it is
+    read.mockRestore();
+  });
+
+  it("starts clean after going empty: what it held is gone, not rolled out again when new text arrives", async () => {
+    const el = document.createElement("span");
+    el.textContent = "$20";
+    el.style.fontSize = "10px";
+    document.body.append(el);
+    // Shrunk around its text, as an inline-block is: with none, it has no box at all.
+    Object.defineProperty(el, "getBoundingClientRect", { value: () => ({ ...box(0), width: el.firstChild?.nodeValue ? 100 : 0, height: el.firstChild?.nodeValue ? 20 : 0 }) });
+    const fill = vi.spyOn(el.style, "setProperty");
+    morphChanges(el);
+    el.textContent = "";
+    await mutation();
+    expect(copies(el)).toEqual([]);
+    expect(fill).toHaveBeenLastCalledWith("-webkit-text-fill-color", ""); // nothing drawn, so nothing hidden
+    calls.length = 0;
+    el.textContent = "Hi";
+    await mutation();
+    expect(copies(el)).toEqual(["H", "i"]);
+    expect(rolls().filter((c) => c.frames.at(-1)!.opacity === 0)).toHaveLength(0);
+    expect(rolls().filter((c) => c.frames[0].opacity === 0).map((c) => c.el.textContent)).toEqual(["H", "i"]);
+    expect(fill).toHaveBeenLastCalledWith("-webkit-text-fill-color", "transparent");
+  });
+
+  it("shows its own text while it cannot be measured, and puts the copies in place without a roll once it can", async () => {
+    const el = document.createElement("span");
+    el.textContent = "Ready";
+    el.style.fontSize = "10px";
+    document.body.append(el);
+    let width = 0; // scaled to nothing across: a box in layout, none on screen
+    Object.defineProperty(el, "getBoundingClientRect", { value: () => ({ ...box(0), width, height: 20 }) });
+    Object.defineProperty(el, "offsetWidth", { value: 100 });
+    const fill = vi.spyOn(el.style, "setProperty");
+    morphChanges(el);
+    expect(copies(el)).toEqual([]);
+    expect(fill).toHaveBeenLastCalledWith("-webkit-text-fill-color", "");
+    width = 100;
+    el.textContent = "Ready now";
+    await mutation();
+    expect(copies(el).join("")).toBe("Readynow");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("leaves an icon that did not change alone, from the first change on", async () => {
+    const el = label('<i class="ico"></i>1');
+    morphChanges(el);
+    const copy = el.querySelector("[aria-hidden] i")!;
+    (el.childNodes[1] as Text).data = "2";
+    await mutation();
+    expect(copies(el)).toEqual(["", "12"]); // the icon's copy, then one slot with the 1 rolling out and the 2 rolling in
+    expect(el.querySelector("[aria-hidden] i")).toBe(copy);
+    expect(calls.some((c) => c.el.localName === "i")).toBe(false);
+    expect(el.querySelector("i")!.outerHTML).toBe('<i class="ico" style="visibility: hidden;"></i>');
+  });
+
+  it("draws an icon again when it is redrawn where it is: an attribute changed, or what is inside it", async () => {
+    const el = label('<i data-key="state" class="idle"></i>');
+    morphChanges(el);
+    el.querySelector("i")!.className = "busy";
+    await mutation();
+    expect(el.querySelector("[aria-hidden] i")!.className).toBe("busy");
+
+    const icon = (lines: string) => `<svg viewBox="0 0 14 14">${lines}</svg>`;
+    const svg = label(icon('<line x1="3" y1="7" x2="11" y2="7"/>'));
+    morphChanges(svg);
+    const face = svg.querySelector("[aria-hidden] svg")!;
+    svg.querySelector("line")!.setAttribute("x1", "5");
+    await mutation();
+    expect(svg.querySelector("[aria-hidden] svg")).toBe(face); // morphed, not swapped
+    await new Promise((frame) => requestAnimationFrame(frame));
+    expect(Number(svg.querySelector("[aria-hidden] line")!.getAttribute("x1"))).toBeGreaterThan(3); // on its way to 5
+  });
+
+  it("reads a minus after a word as a minus, so -5% to -3% rolls up", async () => {
+    const el = label("Change -5%");
+    morphChanges(el);
+    el.textContent = "Change -3%";
+    await mutation();
+    const into = rolls().find((c) => c.frames[0].opacity === 0 && c.el.textContent === "3")!;
+    expect(into.frames[0].translate).toBe("0 10px");
+  });
+
+  it("never holds the element open against a class that hides it: its own inline-block is judged again", async () => {
+    document.head.innerHTML = "<style>.text{display:inline}.gone{display:none}</style>";
+    const el = label("x");
+    el.className = "text";
+    morphChanges(el);
+    expect(el.style.display).toBe("inline-block");
+    el.className = "text gone";
+    await mutation();
+    expect(el.style.display).toBe("");
+    el.className = "text";
+    await mutation();
+    expect(el.style.display).toBe("inline-block");
+    document.head.innerHTML = "";
+  });
+
+  it("lets go of an element taken off the page and never unbound, and listens again if it comes back", () => {
+    let resized = () => {};
+    vi.stubGlobal("ResizeObserver", class { constructor(run: () => void) { resized = run; } observe() {} disconnect() {} });
+    const el = label("x");
+    const off = vi.spyOn(window, "removeEventListener");
+    const on = vi.spyOn(window, "addEventListener");
+    morphChanges(el);
+    expect(on).toHaveBeenCalledWith("beforeprint", expect.any(Function));
+    on.mockClear();
+    el.remove();
+    resized(); // the browser reports a removed element as resized to nothing
+    expect(off).toHaveBeenCalledWith("beforeprint", expect.any(Function));
+    expect(off).toHaveBeenCalledWith("afterprint", expect.any(Function));
+    document.body.append(el);
+    resized();
+    expect(on).toHaveBeenCalledWith("beforeprint", expect.any(Function));
+    off.mockRestore();
+    on.mockRestore();
   });
 
   it("is its own adapter: ignores a null ref, and binds through the Vue directive and the element", () => {

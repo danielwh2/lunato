@@ -27,6 +27,18 @@ const bound = new WeakMap<HTMLElement, () => void>();
 type Live = Unit & { box: HTMLElement; face: HTMLElement };
 
 const KEYS = ["opacity", "translate", "scale", "rotate", "filter"] as const;
+const FILL = "-webkit-text-fill-color"; // transparent on the element hides its glyphs and leaves `color` alone, because the copies read it
+const LOOKS = ["class", "hidden"]; // the element's own attributes that can change how it is laid out
+
+/**
+ * Whether the effect can run here. linear() easing is the newest thing it needs (Chrome 113, Safari 17.2, Firefox 112),
+ * so a browser that has it has the rest. Anywhere else, the server and jsdom included, the element stays plain text.
+ */
+const supported = () =>
+  typeof document !== "undefined" &&
+  typeof ResizeObserver === "function" &&
+  typeof Element.prototype.animate === "function" &&
+  !!globalThis.CSS?.supports?.("animation-timing-function", "linear(0, 1)");
 
 /**
  * Morphs an element's content in place. Change it however you like (`textContent`, a
@@ -49,9 +61,12 @@ const KEYS = ["opacity", "translate", "scale", "rotate", "filter"] as const;
  * That shape, element in and cleanup out, is what React 19 refs and Svelte 5 attachments call, so the
  * function is its own adapter there: `<span ref={morphChanges}>` and `<span {@attach morphChanges}>`. `null`
  * is ignored, because React calls a ref with it on unmount when the ref returns no cleanup (React 18).
+ *
+ * Where the effect cannot run (an old browser, the server, jsdom) it does nothing and the text stays as it is. The
+ * same if drawing ever fails: the element goes back to plain text.
  */
 export function morphChanges(target: string | Element | null): () => void {
-  if (target === null) return () => {};
+  if (target === null || !supported()) return () => {};
   const host = (
     typeof target === "string" ? document.querySelector(target) : target
   ) as HTMLElement | null;
@@ -59,13 +74,15 @@ export function morphChanges(target: string | Element | null): () => void {
   bound.get(host)?.(); // binding again replaces the old binding, so StrictMode and HMR are safe
 
   const style = getComputedStyle(host); // live: reads below always see current values
-  const undress = dress(host, style);
+  const { wear, undress } = dress(host, style);
   const overlay = document.createElement("span");
   overlay.setAttribute("aria-hidden", "true");
   // The host hides its own glyphs with a transparent fill; the overlay puts the fill back for the copies it draws.
   // It is also the window motion is seen through: nothing it draws ever paints outside the element. `clip` where supported, `hidden` before that.
+  // No indent: every copy is a block of its own, and an inherited text-indent would push each one over. No margin,
+  // padding or border either, here or on the boxes: a rule for the element's children (a gap between siblings) lands on these too.
   overlay.style.cssText =
-    "position:absolute;left:0;right:0;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-text-fill-color:currentcolor;overflow:hidden;overflow:clip";
+    "position:absolute;left:0;right:0;margin:0;padding:0;border:0;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-text-fill-color:currentcolor;text-indent:0;overflow:hidden;overflow:clip";
   let overlayTop = 0; // where the window starts, relative to the element's padding box
 
   const reduced =
@@ -78,6 +95,26 @@ export function morphChanges(target: string | Element | null): () => void {
   let width = 0; // the host's last settled width, for the fit
   let fitting: Animation | undefined;
   let wrap = ""; // the host's inline white-space, held while a fit runs
+  let unseen = false; // the element had content while it could not be measured: its first draw is put in place, not animated
+
+  /** Let one of the host's own icons show again and leave no trace: an emptied style attribute would change its markup, which is its key. */
+  const show = (node: HTMLElement) => {
+    node.style.visibility = "";
+    if (!node.getAttribute("style")) node.removeAttribute("style");
+  };
+  /** Nothing to measure. The element shows its own glyphs, and the next draw starts clean, with no copies of what was. */
+  const rest = () => {
+    host.style.setProperty(FILL, "");
+    hidden.forEach(show);
+    hidden = [];
+    overlay.replaceChildren();
+    live = [];
+    text = "";
+    width = 0;
+    unseen = [...host.childNodes].some(
+      (n) => n !== overlay && (n.nodeType === Node.ELEMENT_NODE || !!n.nodeValue?.trim()),
+    );
+  };
 
   const attach = () => {
     if (overlay.parentNode === host) return;
@@ -89,7 +126,7 @@ export function morphChanges(target: string | Element | null): () => void {
   const place = (box: HTMLElement, unit: Unit, origin: { x: number; y: number }) => {
     const { left, top, width, height } = unit.rect;
     // A line-height equal to the glyph's content height puts the baseline where the host drew it.
-    box.style.cssText = `position:absolute;display:block;white-space:pre;left:${left - origin.x}px;top:${top - origin.y}px;width:${width}px;height:${height}px;line-height:${height}px`;
+    box.style.cssText = `position:absolute;display:block;margin:0;padding:0;border:0;white-space:pre;left:${left - origin.x}px;top:${top - origin.y}px;width:${width}px;height:${height}px;line-height:${height}px`;
   };
   const face = (unit: Unit) => {
     const el = (
@@ -172,6 +209,7 @@ export function morphChanges(target: string | Element | null): () => void {
   /** The units, and, on `animate`, how each one got there; otherwise everything is simply put where it now is. */
   const render = (animate: boolean) => {
     attach();
+    if (style.display === "inline") wear(); // shown since it was bound: it needs its box now
     // The fit pins the width; it lets go first so the reads below see the natural layout. It pins it only while it is in
     // effect: once it has played out, the width on screen is the settled one, even if its promise has not yet resolved.
     const pinned = fitting?.effect?.getComputedTiming().progress != null;
@@ -184,7 +222,6 @@ export function morphChanges(target: string | Element | null): () => void {
 
     // Every read, then every write: interleaving them forces a layout per glyph.
     const frame = host.getBoundingClientRect();
-    if (!frame.width && !frame.height) return; // not rendered; the resize observer calls back when it is
     // Rects arrive in screen pixels, scaled by any transform on the element or around it: a card squashed while it is
     // pressed, say. Everything is measured in the element's own unscaled pixels instead, or a change made mid-press
     // places every glyph a few percent off and the glides that follow correct it, which reads as jitter.
@@ -195,6 +232,10 @@ export function morphChanges(target: string | Element | null): () => void {
       parseFloat(size) + (style.boxSizing === "border-box" ? 0 : edges.reduce((sum, edge) => sum + (parseFloat(edge) || 0), 0));
     const boxWidth = exact(style.width, style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth) || host.offsetWidth;
     const boxHeight = exact(style.height, style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth) || host.offsetHeight;
+    // Not rendered, shrunk around no text at all, or scaled to nothing along an axis. A resize or the next change draws it again.
+    if ((!frame.width && !frame.height) || (!frame.width && boxWidth) || (!frame.height && boxHeight)) return rest();
+    animate &&= !unseen;
+    unseen = false;
     const sx = boxWidth ? frame.width / boxWidth : 1;
     const sy = boxHeight ? frame.height / boxHeight : 1;
     const local = (r: DOMRect): DOMRect => {
@@ -213,6 +254,7 @@ export function morphChanges(target: string | Element | null): () => void {
       } as DOMRect;
     };
     const inner = { left: 0, top: 0, width: host.clientWidth, height: host.clientHeight };
+    hidden.forEach(show); // the originals are read as they were written, so an icon's markup never carries our hiding
     const next = collect(host, overlay).map((u) => ({ ...u, rect: local(u.rect) }));
     const was = live.map((u) => local(u.box.getBoundingClientRect())); // includes a glide in flight, so an interruption continues from where it is
 
@@ -243,16 +285,15 @@ export function morphChanges(target: string | Element | null): () => void {
     const origin = { x: inner.left, y: inner.top + top };
     // One line only: a box pinned mid-fit must not re-wrap its text, and a wrapped element has no single width to ease.
     const oneLine = next.every((u) => Math.abs(u.rect.top - next[0].rect.top) < u.rect.height / 2);
-    const now = live.map((u) => read(u.face));
     const toWidth = parseFloat(style.width) || 0;
-    const nextText = next.map((u) => u.text).join("");
+    const nextText = next.map((u, i) => (i && u.word !== next[i - 1].word ? " " : "") + u.text).join(""); // words apart, so a minus after a word still reads as one
     const trend = trendOf(text, nextText);
     text = nextText;
 
     // The word roll: only on one line, before and after, and never under reduced motion, which crossfades either way.
     const wasOneLine = was.every((r) => Math.abs(r.top - was[0].top) < r.height / 2);
     const calmFeel = host.dataset.lunatoFeel === "calm";
-    const label = (u: Unit) => (u.node ? u.node.outerHTML : u.text);
+    const label = (u: Unit) => u.html ?? u.text;
     const roll: Roll | undefined =
       animate && !still && oneLine && wasOneLine && host.dataset.lunato === "roll"
         ? planRoll(
@@ -265,13 +306,19 @@ export function morphChanges(target: string | Element | null): () => void {
     const pairs = roll ? roll.pairs : pair(live, next);
     const ease = calmFeel ? SETTLE : SPRING;
     const kept = new Map(pairs.map(([o, n]) => [n, o]));
-    const leaving = live.map((_, o) => o).filter((o) => !pairs.some(([p]) => p === o));
-    // A kept digit slot whose value changed rolls in place: its old face leaves as the new one arrives.
+    const stays = new Set(pairs.map(([o]) => o));
+    const leaving = live.map((_, o) => o).filter((o) => !stays.has(o));
+    // A kept digit slot whose value changed rolls in place: its old face leaves as the new one arrives. A kept icon
+    // has changed when its markup has, whether a new element took its place or the same one was redrawn.
     const rolling = pairs.filter(
       ([o, n]) =>
-        live[o].text !== next[n].text || (next[n].key === "~icon" && live[o].node !== next[n].node),
+        live[o].text !== next[n].text || live[o].html !== next[n].html,
     );
     const entering = next.map((_, n) => n).filter((n) => !kept.has(n));
+    // The pose of every face about to leave, so it goes on from where it is. Only those: a streamed answer keeps
+    // every glyph it has, and a computed style for each of them at every token is the whole cost of a long one.
+    const now = new Map<number, Keyframe>();
+    if (animate) for (const o of [...leaving, ...rolling.map(([o]) => o)]) now.set(o, read(live[o].face));
     // Changes sweep left to right by word: every glyph in a word starts together, so the word rises straight, as one
     // piece. Staggered by letter, its leading edge would climb at a slant, which reads as dragged in at an angle.
     const wordStart = (units: { word: number }[], left: (i: number) => number) => {
@@ -322,6 +369,7 @@ export function morphChanges(target: string | Element | null): () => void {
         (child as HTMLElement).style.top =
           `${parseFloat((child as HTMLElement).style.top) + moved}px`;
     overlayTop = top;
+    host.style.setProperty(FILL, "transparent");
     overlay.style.top = `${top}px`;
     overlay.style.bottom = `${inner.height - bottom}px`;
     const across = `linear-gradient(to right, transparent, #000 ${fade.left}px, #000 calc(100% - ${fade.right}px), transparent)`;
@@ -331,7 +379,6 @@ export function morphChanges(target: string | Element | null): () => void {
     overlay.style.setProperty("-webkit-mask-composite", "source-in");
     overlay.style.setProperty("mask-composite", "intersect");
 
-    for (const node of hidden) node.style.visibility = "";
     hidden = next.filter((u) => u.node).map((u) => u.node as HTMLElement);
     for (const node of hidden) node.style.visibility = "hidden";
 
@@ -349,7 +396,7 @@ export function morphChanges(target: string | Element | null): () => void {
         clear(f);
         place(box, { ...live[o], rect: was[o] }, origin);
         f.style.transformOrigin = `${rolled.centre - was[o].left}px 55%`;
-        const frames = moving ? [{ ...rolled.frames[0], ...now[o] }, ...rolled.frames.slice(1)] : rolled.frames;
+        const frames = moving ? [{ ...rolled.frames[0], ...now.get(o) }, ...rolled.frames.slice(1)] : rolled.frames;
         run(f, frames, rolled.ms, 0, "linear", "forwards").finished.then(
           () => box.remove(),
           () => box.remove(),
@@ -359,7 +406,7 @@ export function morphChanges(target: string | Element | null): () => void {
       clear(f); // the box keeps any glide it has, and the ghost drifts on while it fades
       const out = run(
         f,
-        exit(now[o], live[o], -trend, still),
+        exit(now.get(o)!, live[o], -trend, still),
         ROLL_MS,
         still ? 0 : exitAt(o),
         ease,
@@ -403,7 +450,7 @@ export function morphChanges(target: string | Element | null): () => void {
       // A morphable icon reshapes into the new one; any other new element is drawn fresh.
       if (
         unit.node &&
-        unit.node !== old.node &&
+        unit.html !== old.html &&
         !morphIcon(old.face, unit.node, animate && !still ? enterAt(n) : null)
       )
         old.face.replaceWith((f = face(unit)));
@@ -417,7 +464,7 @@ export function morphChanges(target: string | Element | null): () => void {
           clear(leavingFace);
           run(
             leavingFace,
-            exit(now[o], old, -trend, still),
+            exit(now.get(o)!, old, -trend, still),
             ROLL_MS,
             delay,
             ease,
@@ -506,7 +553,7 @@ export function morphChanges(target: string | Element | null): () => void {
           if (fitting !== fit) return;
           fitting = undefined;
           host.style.whiteSpace = wrap;
-          render(false);
+          draw(false);
         },
         () => {},
       );
@@ -514,36 +561,83 @@ export function morphChanges(target: string | Element | null): () => void {
     width = toWidth;
   };
 
-  const mutations = new MutationObserver((records) => {
-    if (records.every((r) => overlay.contains(r.target))) return; // our own drawing
-    render(true);
-  });
-  mutations.observe(host, { childList: true, characterData: true, subtree: true });
-
-  // Anything that moves the glyphs without changing them: a resize, a wrap, a web font landing.
-  const refit = () => {
-    if (!fitting) render(false);
-  };
-  const resizes = new ResizeObserver(refit);
-  resizes.observe(host);
-  document.fonts?.addEventListener?.("loadingdone", refit);
-
-  render(false);
-
   const unbind = () => {
+    if (bound.get(host) !== unbind) return; // already stopped, or a newer binding has the element now
     mutations.disconnect();
     resizes.disconnect();
-    document.fonts?.removeEventListener?.("loadingdone", refit);
+    listen(false);
     if (fitting) {
       fitting.cancel();
       host.style.whiteSpace = wrap;
     }
-    for (const node of hidden) node.style.visibility = "";
+    hidden.forEach(show);
     overlay.remove();
     undress();
     bound.delete(host);
   };
+  /** Draw, and if drawing ever fails, hand the element back as plain text: stale copies over hidden glyphs would be the wrong words. */
+  const draw = (animate: boolean) => {
+    try {
+      render(animate);
+    } catch (error) {
+      unbind();
+      console.error("lunato: could not draw, so this element is plain text again", host, error);
+    }
+    mutations.takeRecords(); // whatever that wrote to the element or its icons is ours
+  };
+
+  const mutations = new MutationObserver((records) => {
+    const seen = records.filter((r) => !overlay.contains(r.target)); // the rest is our own drawing
+    const own = seen.filter((r) => r.type === "attributes" && r.target === host);
+    // The element's own class, style or hidden may have changed how it sits: the styles it wears are judged again.
+    const sits = own.some((r) => LOOKS.includes(r.attributeName!));
+    const moved = wear(sits) || sits;
+    // What it holds has changed when its children or text have, or an icon it draws a copy of was redrawn where it is.
+    const changed = seen.some((r) =>
+      r.type === "attributes" ? r.target !== host && hidden.some((icon) => icon.contains(r.target)) : true,
+    );
+    if (changed) draw(true);
+    else if (moved) refit();
+    mutations.takeRecords();
+  });
+  mutations.observe(host, { attributes: true, childList: true, characterData: true, subtree: true });
+
+  // Anything that moves the glyphs without changing them: a resize, a wrap, a web font landing.
+  const refit = () => {
+    if (!fitting) draw(false);
+  };
+  // Leaving the page is a resize to nothing, and so is coming back. The page holds the element only while it is on it:
+  // one removed and never unbound is let go with everything here, and one put back is listened for again.
+  const resizes = new ResizeObserver(() => {
+    listen(host.isConnected);
+    refit();
+  });
+  resizes.observe(host);
+
+  // Paper lays the text out again, and the copies sit where the screen had them. For a print the element shows its
+  // own glyphs and the copies step aside.
+  const print = (event: Event) => {
+    const paper = event.type === "beforeprint";
+    overlay.style.display = paper ? "none" : "";
+    host.style.setProperty(FILL, paper ? "" : "transparent");
+    for (const node of hidden) node.style.visibility = paper ? "" : "hidden";
+    if (!paper) refit();
+    mutations.takeRecords();
+  };
+  let listening = false;
+  /** The listeners on the document and the window: the only things outside the element that hold on to it. */
+  const listen = (on: boolean) => {
+    if (on === listening) return;
+    listening = on;
+    const set = on ? "addEventListener" : "removeEventListener";
+    document.fonts?.[set]?.("loadingdone", refit);
+    window[set]("beforeprint", print);
+    window[set]("afterprint", print);
+  };
+  listen(true);
+
   bound.set(host, unbind);
+  draw(false);
   return unbind;
 }
 
@@ -553,16 +647,42 @@ export const vMorphChanges = {
   unmounted: (el: HTMLElement) => bound.get(el)?.(),
 };
 
-/** The inline styles the effect needs, and a way back. Only these properties are touched, so styles set by anyone else survive. */
+// What a bound element has to be, and what it is given when it is not.
+const PINS = [
+  { name: "position", when: ["static", ""], to: "relative" }, // somewhere for the overlay to sit against
+  { name: "display", when: ["inline"], to: "inline-block" }, // a box to measure, and a width to ease
+];
+
+/**
+ * The inline styles the effect needs, and a way back. Only these properties are touched, so styles set by anyone else survive.
+ *
+ * `wear` puts them on. Called again, it puts back any of them that has gone, and reports whether that changed anything.
+ * With `judge`, it first takes its own off and looks again at what the element's rules now say, because an inline
+ * style outvotes a class or a `hidden` that has since hidden the element or moved it.
+ */
 function dress(host: HTMLElement, style: CSSStyleDeclaration) {
-  const wear: Record<string, string> = {
-    "-webkit-text-fill-color": "transparent", // hides the glyphs and leaves `color` alone, because the copies read it
+  const before = new Map([FILL, ...PINS.map((p) => p.name)].map((name) => [name, host.style.getPropertyValue(name)]));
+  const ours = new Set<string>();
+  const wear = (judge = false) => {
+    let changed = false;
+    for (const { name, when, to } of PINS) {
+      const intact = ours.has(name) && host.style.getPropertyValue(name) === to;
+      if (intact && !judge) continue;
+      if (intact) host.style.setProperty(name, before.get(name)!);
+      const needed = when.includes(style.getPropertyValue(name));
+      if (needed) host.style.setProperty(name, to);
+      if (needed !== ours.has(name)) changed = true;
+      if (needed) ours.add(name);
+      else ours.delete(name);
+    }
+    return changed;
   };
-  if (["static", ""].includes(style.position)) wear.position = "relative";
-  if (style.display === "inline") wear.display = "inline-block";
-  const before = Object.keys(wear).map(
-    (name) => [name, host.style.getPropertyValue(name)] as const,
-  );
-  for (const name in wear) host.style.setProperty(name, wear[name]);
-  return () => before.forEach(([name, value]) => host.style.setProperty(name, value));
+  host.style.setProperty(FILL, "transparent");
+  wear();
+  const undress = () => {
+    host.style.setProperty(FILL, before.get(FILL)!);
+    for (const { name, to } of PINS)
+      if (ours.has(name) && host.style.getPropertyValue(name) === to) host.style.setProperty(name, before.get(name)!); // still ours: a value set since is someone else's
+  };
+  return { wear, undress };
 }

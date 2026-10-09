@@ -61,4 +61,10 @@ describe("pair", () => {
     expect(pair(units("abc"), [])).toEqual([]);
     expect(pair([], units("abc"))).toEqual([]);
   });
+
+  it("walks the start two texts share instead of tabling it, so a long answer streams a word at a cost of a word", () => {
+    const answer = Array.from({ length: 100_000 }, (_, word) => ({ key: "w", text: "w", word }));
+    const next = [...answer, { key: "x", text: "x", word: answer.length }];
+    expect(pair(answer, next)).toHaveLength(answer.length); // tabled, this is ten billion cells: it runs out of memory
+  });
 });

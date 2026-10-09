@@ -28,7 +28,8 @@ beforeEach(() => {
   Element.prototype.getAnimations = () => [];
 });
 const bound = (el: Element) => !!el.querySelector("[aria-hidden]");
-const restored = (el: HTMLElement) => el.style.getPropertyValue("-webkit-text-fill-color") === "";
+// happy-dom drops -webkit-text-fill-color, so the way back is read from the overlay and the position the binding gave.
+const restored = (el: HTMLElement) => !bound(el) && el.style.position === "";
 
 it("React 19: ref={morphChanges}", async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

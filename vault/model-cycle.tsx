@@ -38,7 +38,7 @@ export function ModelCycle({
       type="button"
       aria-label={`Model: ${current.label}. Press for the next`}
       onClick={(e) => step(e.shiftKey ? -1 : 1)}
-      className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[12px] border-0 bg-transparent pl-2 pr-2.5 text-[11px] font-medium leading-none text-neutral-600 transition-[background-color,color] duration-150 [corner-shape:squircle] hover:bg-black/5 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 motion-reduce:transition-none ${className}`}
+      className={`inline-flex h-7 cursor-pointer touch-manipulation items-center gap-1.5 whitespace-nowrap rounded-[12px] border-0 bg-transparent pl-2 pr-2.5 text-[11px] font-medium leading-none text-neutral-600 transition-[background-color,color] duration-150 [corner-shape:squircle] hover:bg-black/5 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 motion-reduce:transition-none ${className}`}
     >
       <span ref={morphChanges} className="grid [&_svg]:size-3">
         {current.icon}

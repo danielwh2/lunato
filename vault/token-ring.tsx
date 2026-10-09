@@ -10,15 +10,15 @@ import { FULL, short, usage } from "./tokens";
  * @example
  * <TokenRing used={usage.totalTokens} limit={200_000} />
  *
- * @param used - Tokens used so far.
+ * @param used - Tokens used so far. Nought until the first count arrives.
  * @param limit - The model's context window.
  */
 export function TokenRing({
-  used,
+  used = 0,
   limit,
   className = "",
 }: {
-  used: number;
+  used?: number;
   limit: number;
   className?: string;
 }) {

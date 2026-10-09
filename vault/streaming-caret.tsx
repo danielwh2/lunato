@@ -56,7 +56,7 @@ export function StreamingCaret({
       {(streaming || shown < text.length) && (
         <span
           aria-hidden
-          className="ml-px inline-block h-[1em] w-[2px] translate-y-[0.15em] animate-pulse rounded-full bg-current"
+          className="ml-px inline-block h-[1em] w-[2px] translate-y-[0.15em] animate-pulse rounded-full motion-reduce:animate-none bg-current"
         />
       )}
     </p>

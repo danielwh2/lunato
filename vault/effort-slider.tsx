@@ -49,6 +49,7 @@ export function EffortSlider({
     setDrag(to);
     pick(to * last);
   };
+  if (!levels.length) return null;
   return (
     <div
       {...meter(levels, at)}
@@ -62,7 +63,7 @@ export function EffortSlider({
           "--n": levels.length,
         } as CSSProperties
       }
-      className={`lunato-slider inline-flex h-7 touch-none select-none items-center gap-2.5 rounded-[12px] px-2 text-[12px] font-medium outline-none transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
+      className={`lunato-slider inline-flex h-7 touch-none select-none items-center gap-2.5 rounded-[12px] px-2 text-[12px] font-medium outline-hidden transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
     >
       <span
         className="lunato-slider-track relative flex h-full w-16 flex-none cursor-pointer items-center"

@@ -34,6 +34,7 @@ export function EffortChip({
   const { at, last, pick, keys } = ladder(levels, value, onChange);
   const level = levels[at];
   const lit = 1 + 2 * Math.round((at / Math.max(1, last)) * 4);
+  if (!levels.length) return null;
   return (
     <button
       type="button"
@@ -42,7 +43,7 @@ export function EffortChip({
       onClick={(e) => pick(e.shiftKey ? at - 1 : at === last ? 0 : at + 1)}
       onKeyDown={keys}
       style={{ "--c": level.color } as CSSProperties}
-      className={`lunato-chip inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[12px] border border-neutral-200 bg-transparent pl-2 pr-2.5 text-[11px] font-medium leading-none text-neutral-900 transition-colors duration-150 [corner-shape:squircle] hover:border-neutral-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 ${className}`}
+      className={`lunato-chip inline-flex h-7 cursor-pointer touch-manipulation items-center gap-1.5 whitespace-nowrap rounded-[12px] border border-neutral-200 bg-transparent pl-2 pr-2.5 text-[11px] font-medium leading-none text-neutral-900 transition-colors duration-150 [corner-shape:squircle] hover:border-neutral-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 ${className}`}
     >
       <span aria-hidden className="relative grid grid-cols-3 gap-[2px]">
         {SLOTS.map((slot) => (

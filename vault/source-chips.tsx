@@ -36,6 +36,7 @@ export function SourceChips({
     seen.current = sources.length;
   });
   const newest = sources[sources.length - 1];
+  const reading = sources.find((s) => s.id === active);
   return (
     <div className={className}>
       <ul aria-label="Sources" className="m-0 flex list-none flex-wrap gap-1 p-0">
@@ -49,7 +50,7 @@ export function SourceChips({
               <span className="max-w-[16ch] truncate">{domain(s)}</span>
             </>
           );
-          const chip = `inline-flex h-[22px] items-center gap-1 rounded-[6px] px-1.5 text-[11px] font-medium no-underline shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] outline-none transition-colors duration-150 [corner-shape:squircle] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 ${on ? "bg-neutral-100 text-neutral-900" : "bg-white text-neutral-500"}`;
+          const chip = `inline-flex h-[22px] items-center gap-1 rounded-[6px] px-1.5 text-[11px] font-medium no-underline shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition-colors duration-150 [corner-shape:squircle] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 ${on ? "bg-neutral-100 text-neutral-900" : "bg-white text-neutral-500"}`;
           return (
             <li
               key={s.id}
@@ -87,7 +88,7 @@ export function SourceChips({
         })}
       </ul>
       <span className="sr-only" aria-live="polite">
-        {newest ? `Reading ${newest.title}` : ""}
+        {reading ? `Reading ${reading.title}` : newest ? `Found ${newest.title}` : ""}
       </span>
     </div>
   );

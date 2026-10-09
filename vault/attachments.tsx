@@ -140,7 +140,7 @@ export function Attachments({
         ))}
         {leaving.map((a) => (
           <li
-            key={a.id}
+            key={`gone-${a.id}`}
             data-id={a.id}
             data-leaving
             aria-hidden
@@ -278,7 +278,7 @@ function Chip({ file }: { file: Attachment }) {
       </span>
       <span className="min-w-0 truncate text-neutral-900">{file.name}</span>
       {file.error ? (
-        <span className="flex-none text-red-600">{file.error}</span>
+        <span className="min-w-0 truncate text-red-600">{file.error}</span>
       ) : (
         file.size !== undefined && (
           <span className="flex-none tabular-nums text-neutral-500">{bytes(file.size)}</span>

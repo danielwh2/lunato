@@ -13,17 +13,17 @@ import "lunato/vault.css";
  * <TokenCells used={usage.totalTokens} limit={200_000}
  *   live={status === "streaming"} />
  *
- * @param used - Tokens used so far.
+ * @param used - Tokens used so far. Nought until the first count arrives.
  * @param limit - The model's context window.
  * @param live - True while tokens are still arriving: the lit cells carry a glint.
  */
 export function TokenCells({
-  used,
+  used = 0,
   limit,
   live = false,
   className = "",
 }: {
-  used: number;
+  used?: number;
   limit: number;
   live?: boolean;
   className?: string;

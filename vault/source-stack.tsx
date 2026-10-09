@@ -89,4 +89,4 @@ export function SourceStack({
 }
 
 const CIRCLE =
-  "grid size-[18px] place-items-center overflow-hidden rounded-full bg-white shadow-[0_0_0_1.5px_#fff,inset_0_0_0_1px_rgb(0_0_0/0.08)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400";
+  "grid size-[18px] place-items-center overflow-hidden rounded-full bg-white shadow-[0_0_0_1.5px_#fff,inset_0_0_0_1px_rgb(0_0_0/0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400";

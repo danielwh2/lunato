@@ -19,7 +19,8 @@ export function useFollow<Content extends HTMLElement = HTMLDivElement>() {
     let stuck = true;
     let ours = -1;
     const scroll = () => {
-      if (b.scrollTop !== ours) stuck = b.scrollTop + b.clientHeight >= b.scrollHeight - SLACK;
+      const bottom = b.scrollTop + b.clientHeight >= b.scrollHeight - SLACK;
+      if (bottom || b.scrollTop !== ours) stuck = bottom;
     };
     const follow = new ResizeObserver(() => {
       if (!stuck) return;

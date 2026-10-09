@@ -40,7 +40,7 @@ export function Mark({ source, look }: { source: Source; look: keyof typeof LOOK
       className={`grid size-full place-items-center font-semibold leading-none ${letter}`}
       style={{ background, color }}
     >
-      {name.charAt(0).toUpperCase()}
+      {(Array.from(name)[0] ?? "").toUpperCase()}
     </span>
   );
 }

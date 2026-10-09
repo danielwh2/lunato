@@ -24,6 +24,7 @@
     text-decoration-color 160ms cubic-bezier(0.2, 0, 0, 1);
 }
 .lunato-diff-text {
+  min-height: 1lh;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: pre;

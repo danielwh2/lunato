@@ -42,13 +42,8 @@ export function ThinkingThoughts({
   const counted = useSeconds(over);
   const elapsed = seconds ?? counted;
   const time = duration(elapsed);
-  const label = done
-    ? `Thought for ${time}`
-    : stopped
-      ? `Stopped after ${time}`
-      : elapsed < 1
-        ? "Thinking"
-        : `Thinking for ${time}`;
+  const [state, joiner] = done ? ["Thought", "for"] : stopped ? ["Stopped", "after"] : ["Thinking", "for"];
+  const label = elapsed < 1 ? state : `${state} ${joiner} ${time}`;
   const panel = useId();
   const body = useRef<HTMLDivElement>(null);
   const following = useRef(true);

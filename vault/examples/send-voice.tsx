@@ -1,3 +1,5 @@
+"use client";
+
 import { SendVoice } from "@/components/lunato/send-voice";
 
 export function Composer({ draft, onDraftChange, ...voice }: {

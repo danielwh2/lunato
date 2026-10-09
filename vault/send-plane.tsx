@@ -36,7 +36,8 @@ export function SendPlane({ busy, disabled = false, onSend, onStop, className = 
       {...press(busy, onSend, onStop)}
       onClick={(e) => {
         if (busy) return e.detail < 2 && onStop();
-        e.currentTarget.dataset.fresh = "";
+        if (e.detail && (e.nativeEvent as PointerEvent).pointerType !== "touch")
+          e.currentTarget.dataset.fresh = "";
         onSend();
       }}
       onPointerLeave={(e) => delete e.currentTarget.dataset.fresh}

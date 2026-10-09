@@ -21,8 +21,11 @@ export function useSeconds(over: boolean) {
   return seconds;
 }
 
-/** 12s, or 1m 12s from a minute on. */
-export const duration = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
+/** 12s, or 1m 12s from a minute on, in whole seconds. */
+export function duration(seconds: number) {
+  const s = Math.floor(seconds);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+}
 
 const TICK_MS = 250;
 

@@ -64,6 +64,9 @@ export function CodeDiff({
                   <span aria-hidden className="select-none text-center">
                     {SIGN[line.kind]}
                   </span>
+                  {line.kind !== "ctx" && (
+                    <span className="sr-only">{line.kind === "add" ? "added: " : "removed: "}</span>
+                  )}
                   <span
                     className={`lunato-diff-text ${streaming && i === lines.length - 1 ? "lunato-diff-caret" : ""}`}
                   >

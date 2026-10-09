@@ -18,11 +18,13 @@ export type SendProps = {
 /**
  * The press handlers every send button shares. The second click of a double-click that sent is not a stop. A button
  * pressed by pointer rather than tabbed to shows no focus ring until it blurs, or a key pressed after the click would
- * ring it.
+ * ring it. Where a click gives a button no focus (Safari), there is no blur to wait for, so the press ends it.
  */
 export const press = (busy: boolean, onSend: () => void, onStop: () => void) => ({
   onClick: (e: MouseEvent<HTMLButtonElement>) => (busy ? e.detail < 2 && onStop() : onSend()),
   onPointerDown: (e: PointerEvent<HTMLButtonElement>) => (e.currentTarget.dataset.pointer = ""),
+  onPointerUp: (e: PointerEvent<HTMLButtonElement>) =>
+    document.activeElement === e.currentTarget || delete e.currentTarget.dataset.pointer,
   onBlur: (e: FocusEvent<HTMLButtonElement>) => delete e.currentTarget.dataset.pointer,
 });
 

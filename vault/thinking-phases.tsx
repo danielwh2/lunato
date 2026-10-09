@@ -32,8 +32,11 @@ export function ThinkingPhases({
   seconds?: number;
   className?: string;
 }) {
-  const counted = useSeconds(done || stopped);
-  const time = duration(seconds ?? counted);
+  const over = done || stopped;
+  const counted = useSeconds(over);
+  const elapsed = seconds ?? counted;
+  const time = over && elapsed < 1 ? "" : duration(elapsed);
+  const end = done ? (time ? "Done in" : "Done") : time ? "Stopped after" : "Stopped";
   const now = done ? phases.length : Math.max(0, Math.min(phases.length - 1, phase));
   return (
     <span
@@ -51,13 +54,13 @@ export function ThinkingPhases({
         ))}
       </span>
       <span aria-hidden ref={morphChanges} data-lunato="roll" className="text-neutral-900">
-        {done ? "Done in" : stopped ? "Stopped after" : phases[now]}
+        {over ? end : phases[now]}
       </span>
       <span aria-hidden ref={morphChanges} className="-ml-1 tabular-nums text-neutral-400">
         {time}
       </span>
       <span role="status" className="sr-only">
-        {done ? `Done in ${time}` : stopped ? `Stopped after ${time}` : phases[now]}
+        {over ? `${end} ${time}`.trim() : phases[now]}
       </span>
     </span>
   );

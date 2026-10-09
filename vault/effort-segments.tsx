@@ -41,6 +41,7 @@ export function EffortSegments({
   const { at, last, pick, keys } = ladder(levels, value, onChange);
   const under = (tray: HTMLElement, x: number) =>
     Math.floor((x - tray.getBoundingClientRect().left - PAD) / CELL);
+  if (!levels.length) return null;
   return (
     <div
       {...meter(levels, at)}
@@ -48,7 +49,7 @@ export function EffortSegments({
       data-held={held || undefined}
       onKeyDown={keys}
       style={{ "--c": levels[at].color, "--at": at } as CSSProperties}
-      className={`lunato-segments inline-flex h-7 select-none items-center gap-2 rounded-[12px] pl-0.5 pr-2 text-[12px] font-medium outline-none transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
+      className={`lunato-segments inline-flex h-7 select-none items-center gap-2 rounded-[12px] pl-0.5 pr-2 text-[12px] font-medium outline-hidden transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
     >
       <span
         className="lunato-segments-tray relative flex flex-none cursor-pointer touch-none"

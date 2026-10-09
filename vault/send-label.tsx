@@ -33,7 +33,8 @@ export function SendLabel({
   });
   useEffect(() => {
     if (!busy) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && stop.current();
+    const esc = (e: KeyboardEvent) =>
+      e.key === "Escape" && !e.defaultPrevented && !e.isComposing && stop.current();
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, [busy]);
@@ -42,13 +43,13 @@ export function SendLabel({
       type="button"
       disabled={!busy && disabled}
       {...press(busy, onSend, onStop)}
-      className={`inline-flex h-[var(--lunato-size,28px)] flex-none cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[var(--lunato-radius,12px)] border-0 bg-neutral-900 pl-2.5 pr-1 text-[12px] font-medium leading-none text-white transition-[scale,opacity] duration-150 [corner-shape:var(--lunato-corner,squircle)] active:scale-[0.96] disabled:cursor-default disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 data-pointer:focus-visible:outline-none motion-reduce:transition-none ${className}`}
+      className={`inline-flex h-[var(--lunato-size,28px)] flex-none cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[var(--lunato-radius,12px)] border-0 bg-neutral-900 pl-2.5 pr-1 [@media(pointer:coarse)]:pr-2.5 text-[12px] font-medium leading-none text-white transition-[scale,opacity] duration-150 [corner-shape:var(--lunato-corner,squircle)] active:scale-[0.96] disabled:cursor-default disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 data-pointer:focus-visible:outline-none motion-reduce:transition-none ${className}`}
     >
       <span ref={morphChanges} data-lunato="roll">{busy ? "Stop" : "Send"}</span>
       <kbd
         ref={morphChanges}
         aria-hidden
-        className="grid h-[calc(var(--lunato-size,28px)-8px)] min-w-5 place-items-center rounded-[calc(var(--lunato-radius,12px)-4px)] bg-white/15 px-1 [font-family:inherit] text-[11px] font-medium text-white/75 [corner-shape:var(--lunato-corner,squircle)]"
+        className="grid h-[calc(var(--lunato-size,28px)-8px)] min-w-5 place-items-center [@media(pointer:coarse)]:hidden rounded-[calc(var(--lunato-radius,12px)-4px)] bg-white/15 px-1 [font-family:inherit] text-[11px] font-medium text-white/75 [corner-shape:var(--lunato-corner,squircle)]"
       >
         {busy ? "Esc" : keys}
       </kbd>

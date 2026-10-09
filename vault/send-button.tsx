@@ -52,7 +52,10 @@ export function SendButton({ busy, disabled = false, onSend, onStop, className =
         className="lunato-send-idle"
         onAnimationIteration={(e: AnimationEvent<HTMLSpanElement>) => {
           if (e.animationName === "lunato-meteor")
-            roll(e.pseudoElement === "::after" ? 2 : 1, e.currentTarget.matches(":hover"));
+            roll(
+              e.pseudoElement === "::after" ? 2 : 1,
+              e.currentTarget.matches(":hover") && matchMedia("(hover: hover)").matches,
+            );
         }}
       >
         <svg

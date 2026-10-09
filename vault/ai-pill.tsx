@@ -83,6 +83,7 @@ export function AiPill({
   });
   useImperativeHandle(ref, () => panel.field.current!, [panel.field]);
   const [focused, setFocused] = useState(false);
+  if (disabled && focused) setFocused(false);
   const hint = usePromptHint({ placeholder, hints, busy, disabled, resting: !value && !focused });
   const look = panelLook(size, "pill");
   return (

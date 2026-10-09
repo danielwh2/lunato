@@ -1,7 +1,7 @@
 "use client";
 
 import { morphChanges } from "lunato";
-import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 export type Model = { id: string; label: string; description?: string; icon?: ReactNode };
 
@@ -17,7 +17,7 @@ export type Model = { id: string; label: string; description?: string; icon?: Re
  * @param value - The id of the chosen model.
  * @param onChange - Called with the id of the model picked.
  * @param side - Where the menu opens: below the chip, or above it.
- * @param align - Which edge of the chip the menu lines up with, or its centre.
+ * @param align - Which edge of the chip the menu lines up with, or its centre. Near the edge of a screen it slides over to keep 8px clear.
  * @param fast - Whether fast responses are on.
  * @param onFastChange - Called with the Fast responses switch's new state. Leave it out and the switch goes.
  */
@@ -45,6 +45,7 @@ export function ModelMenu({
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const items = useRef<(HTMLButtonElement | null)[]>([]);
+  const sheet = useRef<HTMLDivElement>(null);
   const id = useId();
   const current = models.find((m) => m.id === value) ?? models[0];
   const chosen = models.indexOf(current);
@@ -52,6 +53,7 @@ export function ModelMenu({
 
   const open = (fromKeyboard: boolean) => {
     keyboard.current = fromKeyboard;
+    trigger.current?.focus();
     setMenu("open");
   };
   const close = (refocus: boolean) => {
@@ -71,6 +73,16 @@ export function ModelMenu({
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
   }, [menu, chosen]);
+
+  useLayoutEffect(() => {
+    const el = sheet.current;
+    if (menu !== "open" || !el) return;
+    el.style.transform = "";
+    const { left, right } = el.getBoundingClientRect();
+    const room = document.documentElement.clientWidth - EDGE;
+    const nudge = Math.max(0, EDGE - left) + Math.min(0, room - right);
+    if (nudge) el.style.transform = `translateX(${nudge}px)`;
+  }, [menu]);
 
   const keys = (e: KeyboardEvent) => {
     if (menu !== "open") {
@@ -93,6 +105,7 @@ export function ModelMenu({
       e.preventDefault();
       items.current[(to + count) % count]?.focus();
     } else if (e.key === "Escape") {
+      e.preventDefault();
       e.stopPropagation();
       close(true);
     } else if (e.key === "Tab") close(false);
@@ -149,6 +162,7 @@ export function ModelMenu({
       </button>
       {menu !== "closed" && (
         <div
+          ref={sheet}
           id={id}
           role="menu"
           aria-label="Model"
@@ -249,3 +263,4 @@ const Bolt = () => (
   </svg>
 );
 const ALIGN = { start: "left-0", center: "left-1/2 -translate-x-1/2", end: "right-0" };
+const EDGE = 8;

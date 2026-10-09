@@ -38,7 +38,7 @@ export function LoaderGrid({
     pattern === "wave"
       ? (r + c) / (2 * (n - 1))
       : pattern === "ripple"
-        ? (Math.hypot(r - mid, c - mid) - near) / (far - near)
+        ? (Math.hypot(r - mid, c - mid) - near) / (far - near || 1)
         : (i * GOLDEN) % 1;
   return (
     <svg

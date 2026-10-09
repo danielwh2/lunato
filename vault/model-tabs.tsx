@@ -70,7 +70,7 @@ export function ModelTabs({
             tabIndex={i === stop ? 0 : -1}
             onClick={() => onChange(m.id)}
             onKeyDown={(e) => keys(e, i)}
-            className={`inline-flex h-6 cursor-pointer items-center rounded-[10px] border-0 px-1.5 text-[11px] font-medium transition-[background-color,color,box-shadow] duration-150 [corner-shape:squircle] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-neutral-400 motion-reduce:transition-none ${on ? "bg-white text-neutral-900 shadow-[0_0_0_1px_rgb(0_0_0/0.06),0_1px_2px_rgb(0_0_0/0.06)]" : "bg-transparent text-neutral-500 hover:text-neutral-900"}`}
+            className={`inline-flex h-6 cursor-pointer touch-manipulation items-center rounded-[10px] border-0 px-1.5 text-[11px] font-medium transition-[background-color,color,box-shadow] duration-150 [corner-shape:squircle] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-neutral-400 motion-reduce:transition-none ${on ? "bg-white text-neutral-900 shadow-[0_0_0_1px_rgb(0_0_0/0.06),0_1px_2px_rgb(0_0_0/0.06)]" : "bg-transparent text-neutral-500 hover:text-neutral-900"}`}
           >
             <span className="grid [&_svg]:size-3">{m.icon}</span>
             <span

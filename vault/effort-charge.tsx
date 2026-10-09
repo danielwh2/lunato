@@ -60,6 +60,7 @@ export function EffortCharge({
     else pick(reached);
     setCharge(null);
   };
+  if (!levels.length) return null;
   return (
     <div
       {...meter(levels, at)}
@@ -78,10 +79,11 @@ export function EffortCharge({
           "--fill": charge ?? at / Math.max(1, last),
         } as CSSProperties
       }
-      className={`lunato-charge inline-flex h-7 select-none items-center gap-1.5 rounded-[12px] pr-2 text-[12px] font-medium outline-none transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
+      className={`lunato-charge inline-flex h-7 select-none items-center gap-1.5 rounded-[12px] pr-2 text-[12px] font-medium outline-hidden transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
     >
       <span
-        className="lunato-charge-dial relative grid size-7 flex-none cursor-pointer touch-none place-items-center"
+        className="lunato-charge-dial relative grid size-7 flex-none cursor-pointer touch-none place-items-center [-webkit-touch-callout:none]"
+        onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.preventDefault();

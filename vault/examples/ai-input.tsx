@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { AiInput } from "@/components/lunato/ai-input";
 
-export function Composer({
-  busy,
-  error,
-  onSend,
-  onStop,
-  onRetry,
-}: {
+export function Composer({ busy, error, onSend, onStop, onRetry }: {
   busy: boolean;
   error?: string;
   onSend: (text: string) => void;
@@ -24,14 +18,7 @@ export function Composer({
   }
 
   return (
-    <AiInput
-      value={text}
-      onChange={setText}
-      onSubmit={send}
-      busy={busy}
-      onStop={onStop}
-      error={error}
-      onRetry={onRetry}
-    />
+    <AiInput value={text} onChange={setText} onSubmit={send} busy={busy}
+      onStop={onStop} error={error} onRetry={onRetry} />
   );
 }

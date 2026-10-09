@@ -50,6 +50,7 @@ export function EffortTape({
     setDrag(p);
     pick(p);
   };
+  if (!levels.length) return null;
   return (
     <div
       {...meter(levels, at)}
@@ -57,7 +58,7 @@ export function EffortTape({
       data-dragging={drag !== null || undefined}
       onKeyDown={keys}
       style={{ "--c": levels[at].color, "--p": drag ?? at } as CSSProperties}
-      className={`lunato-tape relative inline-flex h-7 select-none items-center gap-2 rounded-[12px] pr-2 text-[12px] font-medium outline-none transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
+      className={`lunato-tape relative inline-flex h-7 select-none items-center gap-2 rounded-[12px] pr-2 text-[12px] font-medium outline-hidden transition-colors duration-150 [corner-shape:squircle] focus-visible:bg-neutral-100 ${className}`}
     >
       <span
         className="lunato-tape-window relative h-full w-[76px] flex-none touch-none overflow-hidden"

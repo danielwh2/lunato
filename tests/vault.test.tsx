@@ -11,7 +11,13 @@ import { AiInput } from "../vault/ai-input";
 import { AiPill } from "../vault/ai-pill";
 import { type Attachment, Attachments } from "../vault/attachments";
 import { CodeDiff } from "../vault/code-diff";
+import { EffortCharge } from "../vault/effort-charge";
+import { EffortChip } from "../vault/effort-chip";
 import { EffortSegments } from "../vault/effort-segments";
+import { EffortSlider } from "../vault/effort-slider";
+import { EffortTape } from "../vault/effort-tape";
+import { LoaderGrid } from "../vault/loader-grid";
+import { SourceChips } from "../vault/source-chips";
 import { MaxBurst } from "../vault/effort";
 import { ModelMenu } from "../vault/model-menu";
 import { SendMorph } from "../vault/send-morph";
@@ -22,6 +28,7 @@ import { ThinkingIndicator } from "../vault/thinking-indicator";
 import { ThinkingPhases } from "../vault/thinking-phases";
 import { ThinkingSteps } from "../vault/thinking-steps";
 import { ThinkingThoughts } from "../vault/thinking-thoughts";
+import { duration } from "../vault/thinking";
 import { TokenMeter } from "../vault/token-meter";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -317,5 +324,180 @@ test("the pill always shows its send button, off until there is something to sen
   expect(send.className).not.toContain("opacity-0");
   await act(() => root.render(pill("hi")));
   expect(send.disabled).toBe(false);
+});
+
+test("no effort levels yet renders nothing rather than crashing, in every meter", async () => {
+  const { host, root } = mount();
+  for (const Meter of [EffortCharge, EffortChip, EffortSegments, EffortSlider, EffortTape]) {
+    await act(() => root.render(<Meter value="" onChange={() => {}} levels={[]} />));
+    expect(host.innerHTML).toBe("");
+  }
+});
+
+test("a finished run with no time to show says so plainly, never 0s, and seconds read whole", async () => {
+  const { host, root } = mount();
+  await act(() => root.render(<ThinkingThoughts thoughts="a" done />));
+  expect(host.querySelector("button")!.textContent).toBe("Thought");
+  await act(() => root.render(<ThinkingPhases phases={["Reading"]} phase={0} done />));
+  expect(host.querySelector('[role="status"]')!.textContent).toBe("Done");
+  await act(() => root.render(<ThinkingPhases phases={["Reading"]} phase={0} done seconds={3.417} />));
+  expect(host.querySelector('[role="status"]')!.textContent).toBe("Done in 3s");
+  expect(duration(75.5)).toBe("1m 15s");
+});
+
+test("a token meter with no count yet reads nought rather than NaN", async () => {
+  const { host, root } = mount();
+  await act(() => root.render(<TokenMeter used={undefined} limit={200_000} />));
+  expect(host.textContent).toBe("0 / 200K");
+  expect(host.querySelector('[role="meter"]')!.getAttribute("aria-valuenow")).toBe("0");
+});
+
+test("a two by two grid ripples: its four dots sit level, and none of them reads NaN", async () => {
+  const { host, root } = mount();
+  await act(() => root.render(<LoaderGrid grid={2} pattern="ripple" />));
+  expect(host.innerHTML).not.toContain("NaN");
+});
+
+test("sources announce the one being read, or the newest found; an emoji name keeps its whole first letter", async () => {
+  const { host, root } = mount();
+  const sources = [{ id: "a", title: "🌙 Moon notes" }, { id: "b", title: "Second" }];
+  await act(() => root.render(<SourceChips sources={sources} active="a" />));
+  expect(host.querySelector("[aria-live]")!.textContent).toBe("Reading 🌙 Moon notes");
+  expect(host.querySelector("li")!.textContent).toContain("🌙");
+  await act(() => root.render(<SourceChips sources={sources} />));
+  expect(host.querySelector("[aria-live]")!.textContent).toBe("Found Second");
+});
+
+test("a diff says which lines were added and removed, not only shows it", async () => {
+  const { host, root } = mount();
+  await act(() => root.render(<CodeDiff file="a.ts" lines={[{ kind: "ctx", text: "" }, { kind: "add", text: "b" }, { kind: "del", text: "c" }]} />));
+  expect([...host.querySelectorAll(".lunato-diff-row")].map((row) => row.querySelector(".sr-only")?.textContent)).toEqual([undefined, "added: ", "removed: "]);
+});
+
+test("Escape belongs to whoever is nearest: it closes the menu without stopping the answer, and never mid-composition", async () => {
+  const { host, root } = mount();
+  const stop = vi.fn();
+  const models = [{ id: "a", label: "A" }, { id: "b", label: "B" }];
+  await act(() => root.render(<AiInput value="" onChange={() => {}} onSubmit={() => {}} busy onStop={stop} models={models} model="a" onModelChange={() => {}} />));
+  const chip = host.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!;
+  await act(() => chip.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 })));
+  expect(document.activeElement).toBe(chip); // Safari gives a clicked button no focus, and the menu's keys need it
+  const esc = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  await act(() => chip.dispatchEvent(esc));
+  expect(esc.defaultPrevented).toBe(true); // what a listener on the document reads, where the React root is the document
+  expect(stop).not.toHaveBeenCalled();
+
+  const field = host.querySelector("input")!;
+  await act(() => field.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, isComposing: true })));
+  expect(stop).not.toHaveBeenCalled();
+  await act(() => field.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  expect(stop).toHaveBeenCalledTimes(1);
+});
+
+test("a code panel follows again once someone scrolls back to the bottom, even to where it last left them", async () => {
+  let grow = () => {};
+  vi.stubGlobal("ResizeObserver", class { constructor(run: () => void) { grow = run; } observe() {} disconnect() {} });
+  const { host, root } = mount();
+  await act(() => root.render(<CodeDiff file="a.ts" lines={[{ kind: "add", text: "a" }]} />));
+  const box = host.querySelector<HTMLElement>(".overflow-y-auto")!;
+  const VIEW = 100;
+  let height = 200;
+  let top = 0;
+  Object.defineProperties(box, {
+    clientHeight: { get: () => VIEW },
+    scrollHeight: { get: () => height },
+    scrollTop: { get: () => top, set: (to: number) => (top = Math.min(to, height - VIEW)) },
+  });
+  const scrollTo = (to: number) => { box.scrollTop = to; box.dispatchEvent(new Event("scroll")); };
+  grow();
+  expect(top).toBe(100);
+  scrollTo(20);
+  height = 250;
+  grow();
+  expect(top).toBe(20); // scrolled up: left alone
+  height = 200;
+  scrollTo(100);
+  height = 300;
+  grow();
+  expect(top).toBe(200);
+  vi.unstubAllGlobals();
+});
+
+test("a pointer press hides the focus ring only while the button holds focus, so a later Tab still shows it", async () => {
+  const { host, root } = mount();
+  await act(() => root.render(<SendMorph busy={false} onSend={() => {}} onStop={() => {}} />));
+  const button = host.querySelector("button")!;
+  const pointer = (type: string) => act(() => button.dispatchEvent(new PointerEvent(type, { bubbles: true })));
+  await pointer("pointerdown");
+  expect(button.dataset.pointer).toBe("");
+  await pointer("pointerup"); // no focus came with the press, as in Safari: there will be no blur to end it
+  expect(button.dataset.pointer).toBeUndefined();
+  button.focus();
+  await pointer("pointerdown");
+  await pointer("pointerup");
+  expect(button.dataset.pointer).toBe("");
+});
+
+test("a panel turned off while its field has focus rolls its hints again once it is back", async () => {
+  vi.useFakeTimers();
+  const { host, root } = mount();
+  const pill = (disabled: boolean) => <AiPill value="" onChange={() => {}} onSubmit={() => {}} busy={false} onStop={() => {}} disabled={disabled} hints={["one", "two"]} />;
+  await act(() => root.render(pill(false)));
+  await act(() => host.querySelector("input")!.focus());
+  await act(() => root.render(pill(true)));
+  await act(() => root.render(pill(false)));
+  await act(() => vi.advanceTimersByTime(3100));
+  expect(host.textContent).toContain("two");
+  vi.useRealTimers();
+});
+
+test("on a touch screen a composer's Enter is a new line and the button sends; stopping leaves the keyboard down", async () => {
+  const coarse = (on: boolean) => vi.stubGlobal("matchMedia", (query: string) => ({ matches: on && query === "(pointer: coarse)" }));
+  const sent = vi.fn();
+  const composer = (busy = false) => <AiInput multiline value="hi" onChange={() => {}} onSubmit={sent} busy={busy} onStop={() => {}} />;
+
+  coarse(true);
+  const phone = mount();
+  await act(() => phone.root.render(composer()));
+  const area = phone.host.querySelector("textarea")!;
+  expect(area.getAttribute("enterkeyhint")).toBe("enter");
+  await act(() => enter(area));
+  expect(sent).not.toHaveBeenCalled();
+  await act(() => phone.host.querySelector<HTMLButtonElement>('button[aria-label="Send"]')!.click());
+  expect(sent).toHaveBeenCalledTimes(1);
+  await act(() => phone.root.render(composer(true)));
+  area.blur();
+  await act(() => phone.host.querySelector<HTMLButtonElement>('button[aria-label="Stop generating"]')!.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 })));
+  expect(document.activeElement).not.toBe(area);
+
+  coarse(false);
+  const desk = mount();
+  await act(() => desk.root.render(composer()));
+  expect(desk.host.querySelector("textarea")!.getAttribute("enterkeyhint")).toBe("send");
+  await act(() => enter(desk.host.querySelector("textarea")!));
+  expect(sent).toHaveBeenCalledTimes(2);
+  vi.unstubAllGlobals();
+});
+
+test("the model menu slides over to stay on the screen when it opens past an edge", async () => {
+  const { host, root } = mount();
+  const models = [{ id: "a", label: "A" }, { id: "b", label: "B" }];
+  await act(() => root.render(<ModelMenu models={models} value="a" onChange={() => {}} />));
+  const rect = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    return (this.getAttribute("role") === "menu" ? { left: -12, right: 208 } : { left: 0, right: 0 }) as DOMRect;
+  });
+  const screen = vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(320);
+  await act(() => host.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!.click());
+  expect(host.querySelector<HTMLElement>('[role="menu"]')!.style.transform).toBe("translateX(20px)"); // 12px off, and 8px clear
+  rect.mockRestore();
+  screen.mockRestore();
+});
+
+test("a long press on the charge dial is its own gesture: no context menu cuts it short", async () => {
+  const { host, root } = mount();
+  await act(() => root.render(<EffortCharge value="low" onChange={() => {}} />));
+  const menu = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+  await act(() => host.querySelector(".lunato-charge-dial")!.dispatchEvent(menu));
+  expect(menu.defaultPrevented).toBe(true);
 });
 

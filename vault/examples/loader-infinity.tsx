@@ -7,7 +7,8 @@ export function Retry({ onRetry }: { onRetry: () => Promise<void> }) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <button disabled={pending} onClick={() => startTransition(onRetry)}>
+    <button aria-label="Retry" aria-busy={pending} disabled={pending}
+      onClick={() => startTransition(onRetry)}>
       {pending ? <LoaderInfinity size={16} /> : "Retry"}
     </button>
   );

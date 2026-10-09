@@ -3,16 +3,9 @@
 import { useState } from "react";
 import { AiInput } from "@/components/lunato/ai-input";
 
-const MODELS = [
-  { id: "fast", label: "Fast" },
-  { id: "pro", label: "Pro" },
-];
+const MODELS = [{ id: "fast", label: "Fast" }, { id: "pro", label: "Pro" }];
 
-export function Composer({
-  busy,
-  onSend,
-  onStop,
-}: {
+export function Composer({ busy, onSend, onStop }: {
   busy: boolean;
   onSend: (text: string, model: string) => void;
   onStop: () => void;
@@ -25,16 +18,8 @@ export function Composer({
   }
 
   return (
-    <AiInput
-      multiline
-      value={text}
-      onChange={setText}
-      onSubmit={send}
-      busy={busy}
-      onStop={onStop}
-      models={MODELS}
-      model={model}
-      onModelChange={setModel}
-    />
+    <AiInput multiline value={text} onChange={setText} onSubmit={send}
+      busy={busy} onStop={onStop} models={MODELS} model={model}
+      onModelChange={setModel} />
   );
 }

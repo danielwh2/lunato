@@ -54,7 +54,7 @@ import "lunato/vault.css";
  * @param onAttach - Called with files picked, pasted or dropped. Leave it out and the attach button, paste and drop go.
  * @param onRemove - Called with an attachment's id when its chip's remove button is pressed.
  * @param multiline - A box that grows with the text over a toolbar, in place of the one-line row.
- * @param submitOn - With multiline: "enter" (the default) sends on Enter; "mod-enter" sends on Cmd or Ctrl+Enter, and Enter is a new line.
+ * @param submitOn - With multiline: "enter" (the default) sends on Enter; "mod-enter" sends on Cmd or Ctrl+Enter, and Enter is a new line. On a touch screen Enter is always a new line, since its keyboard has no Shift+Enter, and the button sends.
  * @param send - Which send button: "night" (the default, "morph" with multiline), "label", "snow", "plane" or "voice".
  * @param onVoice - For send="voice": called on a press of the voice bars, shown while there is nothing to send.
  * @param listening - True while dictation runs, for send="voice".
@@ -140,12 +140,15 @@ export function AiInput({
     onStop,
     onRetry,
   });
-  useImperativeHandle(ref, () => panel.field.current!, [panel.field]);
+  useImperativeHandle(ref, () => panel.field.current!);
   const [focused, setFocused] = useState(false);
+  if (disabled && focused) setFocused(false);
   const hint = usePromptHint({ placeholder, hints, busy, disabled, resting: !value && !focused });
   const look = panelLook(size, shape);
   const drop = useFileDrop(onAttach, disabled);
   const mac = useSyncExternalStore(never, isMac, () => false);
+  const touch = useSyncExternalStore(never, isTouch, () => false);
+  const enterSends = submitOn === "enter" && !touch;
   const Send = SENDS[send];
   const indent = onAttach || leading ? "0px" : "8px";
   useLayoutEffect(() => {
@@ -181,7 +184,7 @@ export function AiInput({
       onStop={panel.stop}
       onVoice={listening || (!value.trim() && !attachments.length) ? onVoice : undefined}
       listening={listening}
-      keys={multiline && submitOn === "mod-enter" ? `${mac ? "⌘" : "Ctrl"} Enter` : "Enter"}
+      keys={multiline && !enterSends ? `${mac ? "⌘" : "Ctrl"} Enter` : "Enter"}
     />
   );
   return (
@@ -208,12 +211,12 @@ export function AiInput({
             {...field}
             ref={panel.field as RefObject<HTMLTextAreaElement | null>}
             rows={1}
-            enterKeyHint={submitOn === "enter" ? "send" : "enter"}
+            enterKeyHint={enterSends ? "send" : "enter"}
             placeholder={placeholder}
             onKeyDown={(e) => {
               if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
               if (e.keyCode === 229) return e.preventDefault();
-              if (submitOn === "enter" ? e.shiftKey : !(e.metaKey || e.ctrlKey)) return;
+              if (enterSends ? e.shiftKey : !(e.metaKey || e.ctrlKey)) return;
               e.preventDefault();
               panel.submit();
             }}
@@ -284,3 +287,4 @@ const SENDS = {
 };
 const never = () => () => {};
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.userAgent);
+const isTouch = () => matchMedia("(pointer: coarse)").matches;

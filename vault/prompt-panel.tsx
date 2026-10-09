@@ -68,15 +68,16 @@ export function usePromptPanel<Field extends HTMLInputElement | HTMLTextAreaElem
     onSubmit();
     focus();
   };
+  const refocus = () => matchMedia("(pointer: coarse)").matches || focus();
   const stop = () => {
     onStop();
-    focus();
+    refocus();
   };
   const retry =
     onRetry &&
     (() => {
       onRetry();
-      focus();
+      refocus();
     });
   useLayoutEffect(() => {
     const at = document.activeElement;
@@ -99,7 +100,7 @@ export function usePromptPanel<Field extends HTMLInputElement | HTMLTextAreaElem
         submit();
       },
       onKeyDown: (e: KeyboardEvent) => {
-        if (e.key !== "Escape" || !busy) return;
+        if (e.key !== "Escape" || !busy || e.nativeEvent.isComposing) return;
         e.preventDefault();
         stop();
       },
@@ -274,8 +275,8 @@ export function PromptError({ error, onRetry }: { error?: string; onRetry?: () =
 }
 
 const SIZES = {
-  sm: { control: 24, radius: 10, pad: 3, text: "sm:text-[12px]" },
-  md: { control: 28, radius: 12, pad: 3, text: "sm:text-[13px]" },
-  lg: { control: 32, radius: 14, pad: 4, text: "sm:text-[14px]" },
+  sm: { control: 24, radius: 10, pad: 3, text: "sm:[@media(pointer:fine)]:text-[12px]" },
+  md: { control: 28, radius: 12, pad: 3, text: "sm:[@media(pointer:fine)]:text-[13px]" },
+  lg: { control: 32, radius: 14, pad: 4, text: "sm:[@media(pointer:fine)]:text-[14px]" },
 } as const;
 const HINT_MS = 3000;

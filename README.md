@@ -2,6 +2,8 @@
 
 The motion layer for AI interfaces. Streamed answers, agent status, live captions and rewrites change their minds as they go; lunato moves only the words that changed. One function, zero dependencies, any framework.
 
+[Site](https://lunato-site-pi.vercel.app) · [Docs](https://lunato-site-pi.vercel.app/docs) · [Vault](https://lunato-site-pi.vercel.app/vault)
+
 ```
 npm i lunato
 ```

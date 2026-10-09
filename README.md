@@ -184,7 +184,7 @@ Unchanged words hold still, however many edits sit between them.
 
 ## Components
 
-The vault has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, streaming text and token meters. They are React 19 and Tailwind v4, to copy into your project and change as you like.
+[The vault](https://lunato-site-pi.vercel.app/vault) has AI interface pieces built with it, each with its motion finished: AI inputs, send buttons, model pickers, effort meters, thinking states and loaders, code changes, research sources, streaming text and token meters. They are React 19 and Tailwind v4, to copy into your project and change as you like.
 
 They live in this repo under [`vault/`](vault), one file each with its sheet beside it. Their styles and motion come with lunato, in one stylesheet, `lunato/vault.css`, which each component imports itself. Install lunato and there is nothing else to set up.
 

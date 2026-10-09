@@ -1,6 +1,6 @@
 {
   "name": "lunato",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The motion layer for AI interfaces: streamed answers, agent status, live captions and rewrites, where only the words that changed move. One function, zero dependencies.",
   "type": "module",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git+https://github.com/danielwh2/lunato.git"
   },
-  "homepage": "https://github.com/danielwh2/lunato#readme",
+  "homepage": "https://lunato-site-pi.vercel.app",
   "bugs": "https://github.com/danielwh2/lunato/issues",
   "keywords": [
     "ai",
